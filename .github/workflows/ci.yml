@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  detect-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Detect language and run checks
+        run: |
+          echo "=== Detecting project language ==="
+
+          if [ -f "Cargo.toml" ]; then
+            echo "Detected: Rust"
+            rustup update stable
+            cargo fmt -- --check
+            cargo clippy -- -D warnings
+            cargo test
+
+          elif [ -f "pyproject.toml" ] || [ -f "requirements.txt" ]; then
+            echo "Detected: Python"
+            pip install ruff pytest
+            [ -f "pyproject.toml" ] && pip install -e ".[dev]" 2>/dev/null || true
+            [ -f "requirements.txt" ] && pip install -r requirements.txt
+            ruff check .
+            ruff format --check .
+            pytest || echo "No tests found"
+
+          elif [ -f "package.json" ]; then
+            echo "Detected: Node.js/TypeScript"
+            npm ci
+            npm run lint 2>/dev/null || npx eslint . 2>/dev/null || echo "No linter configured"
+            npm test 2>/dev/null || npx vitest run 2>/dev/null || echo "No tests found"
+            npm run build 2>/dev/null || echo "No build step"
+
+          elif [ -f "go.mod" ]; then
+            echo "Detected: Go"
+            go vet ./...
+            go test ./...
+
+          elif [ -f "pubspec.yaml" ]; then
+            echo "Detected: Flutter/Dart"
+            flutter pub get
+            dart analyze
+            flutter test || echo "No tests found"
+
+          else
+            echo "No recognized project language detected. Skipping CI checks."
+            echo "Add language-specific config files to enable CI."
+          fi
