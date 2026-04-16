@@ -16,6 +16,7 @@
 - constitution.md — 项目宪法，AI 每次操作前必读
 - specs/_template.spec.md — spec 模板
 - specs/ — 所有 spec 文件
+- deploy/ — 部署文档（构建/部署/回滚配置）
 - logs/ — AI 实现日志
 - .claude/commands/ — slash commands
 - .claude/rules/ — 语言特定规范

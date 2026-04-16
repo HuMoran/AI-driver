@@ -65,6 +65,7 @@ cp specs/_template.spec.md specs/p01_my-feature.spec.md
 .github/workflows/  — GitHub Actions（auto-release + CI）
 .codex/             — Codex 项目级配置
 specs/              — Spec 文件（人写的需求）
+deploy/             — 部署文档（人写的构建/部署配置）
 logs/               — AI 实现日志（计划、任务、记录）
 constitution.md     — 项目宪法（AI 必须遵守的规则）
 CLAUDE.md           — AI 上下文
