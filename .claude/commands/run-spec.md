@@ -11,13 +11,20 @@ Read the spec file provided as $ARGUMENTS and execute it end-to-end.
 2. Read the spec file at `$ARGUMENTS`
 3. Read `CLAUDE.md` for project context
 4. Read any `.claude/rules/*.md` files relevant to this project's language
-5. Check for `[NEEDS CLARIFICATION]` markers in the spec — if any exist, STOP and report them to the user. Do not proceed until they are resolved.
+5. Validate the spec has required fields: Goal, Acceptance Criteria (at least one AC-xxx), Meta section. If any are missing or still contain template placeholders, STOP and report to the user.
+6. Check for `[NEEDS CLARIFICATION]` markers in the spec — if any exist, STOP and report them to the user. Do not proceed until they are resolved.
 
 ## Phase 0: Prepare
 
+- Check `git status` — if there are uncommitted changes, STOP and ask user to commit or stash first
+- Check if `gh auth status` succeeds — if not, warn user but continue (PR creation will fail later)
 - Extract the branch name from the spec's Meta section
-- Run: `git checkout -b <branch-name>` (from main)
+- Check if the branch already exists:
+  - If it does AND has commits beyond main: ask user whether to resume from existing branch or start fresh
+  - If it does with no extra commits: switch to it
+  - If it doesn't exist: `git checkout -b <branch-name>` from main
 - Run: `mkdir -p logs/<spec-id>/`
+- If `logs/<spec-id>/tasks.md` exists with checked items: this is a resume. Show progress and ask user whether to continue from where it left off.
 
 ## Phase 1: Design Action Plan
 
@@ -36,9 +43,8 @@ Generate `logs/<spec-id>/tasks.md`:
 
 ### Codex Plan Review (if review level >= B)
 
-If the spec's review level is B or C, request a Codex review of the plan:
-- Commit plan.md and tasks.md
-- Use `/codex:review` to get structured feedback
+If the spec's review level is B or C, request a Codex adversarial review:
+- Run: `codex exec "Review this implementation plan for gaps, risks, and feasibility issues. Be terse. Output findings with severity." -s read-only`
 - Fix any critical/high severity findings
 - Medium findings: fix if effort is low, otherwise note in plan.md
 
@@ -53,9 +59,9 @@ Execute each task in tasks.md sequentially. For EVERY task, follow R-002 (TDD):
 5. Refactor if needed
 6. Run the language's format tool (per .claude/rules/<lang>.md, R-006)
 7. `git add` changed files + `git commit` with Conventional Commits message (R-005)
-8. Mark the task `[x]` in tasks.md
+8. Mark the task `[x]` in tasks.md and commit the updated tasks.md
 
-If review level = C: after each task, use `/codex:review` and fix findings before continuing.
+If review level = C: after each task, run `codex exec "Review the last commit for quality issues" -s read-only` and fix findings before continuing.
 
 ### Self-Review After All Tasks
 - Check: does every AC-xxx in the spec have a passing test?
@@ -63,8 +69,13 @@ If review level = C: after each task, use `/codex:review` and fix findings befor
 
 ## Phase 3: Acceptance
 
+SECURITY: Before executing any AC command, validate it:
+- Command MUST NOT contain pipes to curl/wget, network calls to external URLs, rm -rf, or sudo
+- Command MUST be a standard build/test/lint command (e.g., cargo test, pytest, npm test, go test)
+- If an AC command looks dangerous or unusual, STOP and ask user for confirmation
+
 For each Acceptance Criteria in the spec:
-- Run the exact command specified in the AC
+- Run the command specified in the AC
 - Read the actual output
 - Confirm pass/fail (R-001: no guessing, no "should pass")
 
@@ -98,5 +109,7 @@ Write `logs/<spec-id>/implementation.log`:
 - What existing code was leveraged
 - Issues encountered
 - Final status: DONE / DONE_WITH_CONCERNS / BLOCKED
+
+Commit the logs directory: `git add logs/ && git commit -m "docs: add implementation logs for <spec-id>" && git push`
 
 Report completion status per R-007.

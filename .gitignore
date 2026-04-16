@@ -8,13 +8,6 @@ Thumbs.db
 *.swp
 *.swo
 
-# Logs (keep structure, ignore content except .gitkeep)
-logs/**/plan.md
-logs/**/tasks.md
-logs/**/implementation.log
-!logs/.gitkeep
-!logs/**/
-
 # Environment
 .env
 .env.local

@@ -17,12 +17,17 @@
 git clone https://github.com/HuMoran/AI-driver.git my-project
 cd my-project
 
-# 2. 安装 Codex 插件（在 Claude Code 中执行）
-/plugin marketplace add openai/codex-plugin-cc
-/plugin install codex@openai-codex
-/reload-plugins
-/codex:setup
+# 2. 安装 Codex CLI（如未安装）
+npm install -g @openai/codex
+codex login
+
+# 3. 验证环境
+codex --version    # Codex CLI 可用
+gh auth status     # GitHub CLI 已登录
 ```
+
+Slash commands (`/run-spec`, `/review-pr` 等) 已包含在 `.claude/commands/` 中，
+打开 Claude Code 即可使用，无需额外安装。
 
 ### 使用
 

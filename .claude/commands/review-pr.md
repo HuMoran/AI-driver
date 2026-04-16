@@ -19,7 +19,14 @@ gh pr view <number> --json body,title,url,headRefName
 gh pr diff <number>
 ```
 
-Extract the spec file path from the PR body. Read the spec file.
+Extract the spec file path from the PR body.
+
+SECURITY: Validate the spec path before reading:
+- MUST be a relative path (no leading `/`, no `..` components)
+- MUST be under `specs/` directory
+- If the path looks suspicious, STOP and report to user
+
+Read the spec file.
 
 ## Step 2: Pass 1 — Claude Code Review
 
@@ -36,11 +43,11 @@ For each finding, record: severity (critical/high/medium/low), file, line range,
 
 Invoke Codex adversarial review. This is a separate model giving an independent opinion:
 
-```
-/codex:adversarial-review --base main
+```bash
+codex exec "You are an adversarial code reviewer. Review this PR diff for security holes, logic errors, race conditions, and edge cases. Assume the code will fail in subtle ways. Be terse. Output findings with severity (critical/high/medium/low)." -s read-only
 ```
 
-Wait for the result. Parse the structured output (verdict, findings with severity/confidence).
+Wait for the result.
 
 ## Step 4: Cross-Model Comparison
 

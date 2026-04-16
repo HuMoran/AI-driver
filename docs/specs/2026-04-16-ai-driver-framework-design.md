@@ -16,23 +16,10 @@
 
 - **Claude Code** — 已安装并登录
 - **Codex CLI** — `npm install -g @openai/codex`，已登录 (`codex login`)
-- **Codex Plugin for Claude Code** — 项目级安装（见下方安装步骤）
 - **GitHub CLI** — `gh auth login` 已完成
 
-### Codex 插件安装（项目级）
-
-```bash
-# 在 Claude Code 中执行：
-/plugin marketplace add openai/codex-plugin-cc
-/plugin install codex@openai-codex
-/reload-plugins
-/codex:setup    # 验证 Codex CLI 就绪
-```
-
-安装后项目获得以下 Codex 能力：
-- `/codex:review` — 标准代码审查（结构化 JSON 输出，含 severity/confidence）
-- `/codex:adversarial-review` — 对抗性审查（试图打破对代码的信心）
-- `/codex:rescue` — 将调查/修复任务委派给 Codex 执行
+Slash commands 已包含在 `.claude/commands/` 中，clone 后 Claude Code 自动加载。
+Codex 通过 `codex exec` CLI 命令调用，不需要额外插件。
 
 ## 3. 设计原则
 

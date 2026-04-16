@@ -13,42 +13,59 @@ jobs:
       - name: Detect language and run checks
         run: |
           echo "=== Detecting project language ==="
+          DETECTED=false
 
           if [ -f "Cargo.toml" ]; then
             echo "Detected: Rust"
+            DETECTED=true
             rustup update stable
             cargo fmt -- --check
             cargo clippy -- -D warnings
             cargo test
+          fi
 
-          elif [ -f "pyproject.toml" ] || [ -f "requirements.txt" ]; then
+          if [ -f "pyproject.toml" ] || [ -f "requirements.txt" ]; then
             echo "Detected: Python"
+            DETECTED=true
             pip install ruff pytest
             [ -f "pyproject.toml" ] && pip install -e ".[dev]" 2>/dev/null || true
             [ -f "requirements.txt" ] && pip install -r requirements.txt
             ruff check .
             ruff format --check .
-            pytest || echo "No tests found"
+            pytest
+          fi
 
-          elif [ -f "package.json" ]; then
+          if [ -f "package.json" ]; then
             echo "Detected: Node.js/TypeScript"
+            DETECTED=true
             npm ci
-            npm run lint 2>/dev/null || npx eslint . 2>/dev/null || echo "No linter configured"
-            npm test 2>/dev/null || npx vitest run 2>/dev/null || echo "No tests found"
-            npm run build 2>/dev/null || echo "No build step"
+            if [ -n "$(jq -r '.scripts.lint // empty' package.json 2>/dev/null)" ]; then
+              npm run lint
+            fi
+            if [ -n "$(jq -r '.scripts.test // empty' package.json 2>/dev/null)" ]; then
+              npm test
+            fi
+            if [ -n "$(jq -r '.scripts.build // empty' package.json 2>/dev/null)" ]; then
+              npm run build
+            fi
+          fi
 
-          elif [ -f "go.mod" ]; then
+          if [ -f "go.mod" ]; then
             echo "Detected: Go"
+            DETECTED=true
             go vet ./...
             go test ./...
+          fi
 
-          elif [ -f "pubspec.yaml" ]; then
+          if [ -f "pubspec.yaml" ]; then
             echo "Detected: Flutter/Dart"
+            DETECTED=true
             flutter pub get
             dart analyze
-            flutter test || echo "No tests found"
+            flutter test
+          fi
 
-          else
+          if [ "$DETECTED" = "false" ]; then
             echo "No recognized project language detected. Skipping CI checks."
             echo "Add language-specific config files to enable CI."
           fi

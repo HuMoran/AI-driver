@@ -1,9 +1,21 @@
 {
   "permissions": {
     "allow": [
-      "Bash(gh *)",
-      "Bash(git *)",
-      "Bash(codex *)"
+      "Bash(gh pr *)",
+      "Bash(gh issue *)",
+      "Bash(gh auth status)",
+      "Bash(gh repo view *)",
+      "Bash(git status)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Bash(git checkout *)",
+      "Bash(git branch *)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(git pull)",
+      "Bash(git stash *)",
+      "Bash(codex exec *)"
     ]
   }
 }
