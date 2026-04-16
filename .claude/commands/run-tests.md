@@ -4,10 +4,9 @@ Usage: /run-tests [--type unit|integration|e2e|all]
 
 Default: --type all
 
-## BEFORE ANYTHING ELSE
+## Pre-flight
 
-1. Read `CLAUDE.md` for project context
-2. Read `.claude/rules/*.md` to find test commands for this project's language
+Read `.claude/rules/*.md` to find test commands for this project's language.
 
 ## Step 1: Detect Test Commands
 

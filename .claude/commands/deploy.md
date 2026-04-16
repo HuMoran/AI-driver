@@ -2,13 +2,11 @@
 
 Usage: /deploy <staging|production>
 
-## BEFORE ANYTHING ELSE
+## Pre-flight
 
-1. Read `constitution.md`
-2. Read the project's deploy document at `deploy/*.deploy.md`
-   - If no deploy document exists, report NEEDS_CONTEXT:
-     "No deploy document found. Copy `deploy/_template.deploy.md` to `deploy/<project>.deploy.md` and fill in your build/deploy commands."
-3. Read `CLAUDE.md` for additional context
+Read the project's deploy document at `deploy/*.deploy.md` (excluding templates).
+If no deploy document exists, report NEEDS_CONTEXT:
+"No deploy document found. Copy `deploy/_template.deploy.md` to `deploy/<project>.deploy.md` and fill in your build/deploy commands."
 
 ## Locate Deploy Document
 

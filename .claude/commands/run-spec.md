@@ -5,14 +5,12 @@ Usage: /run-spec <path-to-spec-file>
 You are an AI engineer executing a spec-driven development workflow.
 Read the spec file provided as $ARGUMENTS and execute it end-to-end.
 
-## BEFORE ANYTHING ELSE
+## Pre-flight
 
-1. Read `constitution.md` — obey every principle and operational rule
-2. Read the spec file at `$ARGUMENTS`
-3. Read `CLAUDE.md` for project context
-4. Read any `.claude/rules/*.md` files relevant to this project's language
-5. Validate the spec has required fields: Goal, Acceptance Criteria (at least one AC-xxx), Meta section. If any are missing or still contain template placeholders, STOP and report to the user.
-6. Check for `[NEEDS CLARIFICATION]` markers in the spec — if any exist, STOP and report them to the user. Do not proceed until they are resolved.
+1. Read the spec file at `$ARGUMENTS`
+2. Read `.claude/rules/*.md` files relevant to this project's language
+3. Validate the spec has required fields: Goal, Acceptance Criteria (at least one AC-xxx), Meta section. If any are missing or still contain template placeholders, STOP and report to the user.
+4. Check for `[NEEDS CLARIFICATION]` markers in the spec — if any exist, STOP and report them to the user. Do not proceed until they are resolved.
 
 ## Phase 0: Prepare
 

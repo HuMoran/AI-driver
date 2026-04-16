@@ -1,7 +1,10 @@
 # AI-Driver
 
-## What Is This
 Language-agnostic AI-driven development framework. Humans write specs, AI does the rest.
+
+## IMPORTANT: Read constitution.md before any operation
+
+The constitution defines all principles (P1-P6) and operational rules (R-001 to R-007) that govern AI behavior in this project. Obey every rule. Halt and report on any violation.
 
 ## Workflow
 1. Human writes specs/pxx_xxx.spec.md
@@ -13,17 +16,14 @@ Language-agnostic AI-driven development framework. Humans write specs, AI does t
 7. /fix-issues → AI reads issue → fix → PR
 
 ## Key Files
-- constitution.md — project constitution, AI must read before every operation
-- specs/_template.spec.md — spec template
-- specs/ — all spec files
-- deploy/ — deploy documents (build/deploy/rollback config)
-- logs/ — AI implementation logs
+- constitution.md — project constitution, rules AI must follow
+- specs/_template.spec.md — spec template (EN), .zh-CN.md for Chinese
+- deploy/_template.deploy.md — deploy template (EN), .zh-CN.md for Chinese
 - .claude/commands/ — slash commands
-- .claude/rules/ — language-specific rules
-- CHANGELOG.md — changelog
+- .claude/rules/ — language-specific rules (format/lint/test/build per language)
+- logs/ — AI implementation logs
 
 ## Rules
-- Read constitution.md before any implementation
 - Do not modify constitution.md (unless human explicitly requests)
 - Do not expand spec scope
 - One atomic commit per task

@@ -4,11 +4,9 @@ Usage: /fix-issues [--label <label>] [--limit <n>]
 
 Defaults: --label ai-fix --limit 5
 
-## BEFORE ANYTHING ELSE
+## Pre-flight
 
-1. Read `constitution.md`
-2. Read `CLAUDE.md`
-3. Check `git status` — must be on main with clean working tree
+- Check `git status` — must be on main with clean working tree
 
 ## Step 1: Fetch Issues
 
