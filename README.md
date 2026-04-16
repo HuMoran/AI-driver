@@ -7,8 +7,8 @@
 ### 前置条件
 
 - [Claude Code](https://claude.ai/code) 已安装并登录
-- [Codex CLI](https://github.com/openai/codex) 已安装: `npm install -g @openai/codex`
-- [GitHub CLI](https://cli.github.com/) 已安装: `gh auth login`
+- [Codex CLI](https://github.com/openai/codex) 已安装： `npm install -g @openai/codex`
+- [GitHub CLI](https://cli.github.com/) 已安装：`gh auth login`
 
 ### 安装
 
@@ -97,7 +97,7 @@ CLAUDE.md           — AI 上下文
 
 ## 设计依据
 
-基于以下项目和实践的研究:
+基于以下项目和实践的研究：
 - [GitHub Spec-Kit](https://github.github.com/spec-kit/) — 规范驱动开发工具
 - [Pimzino spec-workflow](https://github.com/Pimzino/claude-code-spec-workflow) — Claude Code spec 工作流
 - [Superpowers](https://github.com/obra/superpowers) — AI 工程纪律插件
