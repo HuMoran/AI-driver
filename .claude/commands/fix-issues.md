@@ -53,7 +53,7 @@ If no spec found in comments:
 ## Step 3: Post Status to Issue
 
 ```bash
-gh issue comment <number> --body "AI 开始处理此 issue..."
+gh issue comment <number> --body "AI is processing this issue..."
 ```
 
 ## Step 4: Execute Fix (inline workflow, same as /run-spec)
@@ -93,11 +93,11 @@ gh issue comment <number> --body "<fix-report>"
 Fix report format:
 ```markdown
 ## AI Fix Report
-- **根因分析**: [root cause description]
-- **修复方案**: [fix summary]
+- **Root Cause**: [root cause description]
+- **Fix**: [fix summary]
 - **PR**: #<pr-number>
-- **状态**: DONE / DONE_WITH_CONCERNS / BLOCKED
-- **变更文件**: [list of changed files]
+- **Status**: DONE / DONE_WITH_CONCERNS / BLOCKED
+- **Changed Files**: [list of changed files]
 ```
 
 ## Step 6: Summary

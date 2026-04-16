@@ -15,7 +15,7 @@ If multiple deploy docs exist, use the one matching `$ARGUMENTS` or ask the user
 
 ## Build (if needed)
 
-From the deploy doc's "编译构建 (Build)" section:
+From the deploy doc's "Build" (or "编译构建") section:
 1. Check dependency environment requirements
 2. Execute build steps in order
 3. Verify build artifacts exist at the specified path
@@ -57,4 +57,4 @@ From the deploy doc's "编译构建 (Build)" section:
 
 ## Special Platforms
 
-If the deploy doc has a "特殊平台" section (cross-compilation, firmware flashing, mobile packaging, containerization), follow those steps as part of the build process. Execute them in the order specified.
+If the deploy doc has a "Special Platforms" (or "特殊平台") section (cross-compilation, firmware flashing, mobile packaging, containerization), follow those steps as part of the build process. Execute them in the order specified.
