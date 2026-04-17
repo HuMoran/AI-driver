@@ -67,14 +67,17 @@ Never delete a file. Never move a file out of the project root.
 ### 6. Optional copies
 
 If `--with-deploy` is set, apply merge-safe copy for:
+
 - `${CLAUDE_PLUGIN_ROOT}/templates/deploy/_template.deploy.md` → `./deploy/_template.deploy.md`
 - `${CLAUDE_PLUGIN_ROOT}/templates/deploy/_template.deploy.zh-CN.md` → `./deploy/_template.deploy.zh-CN.md`
 
 If `--with-ci` is set:
+
 - `${CLAUDE_PLUGIN_ROOT}/templates/.github/workflows/auto-release.yml` → `./.github/workflows/auto-release.yml`
 - `${CLAUDE_PLUGIN_ROOT}/templates/.github/workflows/ci.yml` → `./.github/workflows/ci.yml`
 
 If `--with-codex` is set:
+
 - `${CLAUDE_PLUGIN_ROOT}/templates/.codex/config.toml` → `./.codex/config.toml`
 
 Create intermediate directories as needed.
@@ -126,7 +129,7 @@ Output the list of actions taken, grouped as:
 
 End with the next steps:
 
-```
+```txt
 Next steps:
   1. Edit constitution.md to match your project constraints.
   2. Write your first spec:   cp specs/_template.spec.md specs/<your-feature>.spec.md

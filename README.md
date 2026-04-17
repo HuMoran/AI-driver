@@ -54,14 +54,14 @@ cp specs/_template.spec.md specs/my-feature.spec.md
 
 ## Commands
 
-| Command | Purpose |
-|---------|---------|
-| `/ai-driver:init` | Scaffold AI-driver files into the current project |
-| `/ai-driver:run-spec <file>` | Execute a spec end-to-end: plan, implement, test, PR |
-| `/ai-driver:review-pr [number]` | Dual-blind PR review (Claude + Codex) |
-| `/ai-driver:fix-issues` | Batch-fix GitHub issues labeled `ai-fix` |
-| `/ai-driver:run-tests` | Detect and run the project test suite |
-| `/ai-driver:deploy <env>` | Execute the deploy flow from `deploy/<project>.deploy.md` |
+| Command                         | Purpose                                                   |
+| ------------------------------- | --------------------------------------------------------- |
+| `/ai-driver:init`               | Scaffold AI-driver files into the current project         |
+| `/ai-driver:run-spec <file>`    | Execute a spec end-to-end: plan, implement, test, PR      |
+| `/ai-driver:review-pr [number]` | Dual-blind PR review (Claude + Codex)                     |
+| `/ai-driver:fix-issues`         | Batch-fix GitHub issues labeled `ai-fix`                  |
+| `/ai-driver:run-tests`          | Detect and run the project test suite                     |
+| `/ai-driver:deploy <env>`       | Execute the deploy flow from `deploy/<project>.deploy.md` |
 
 See [`plugins/ai-driver/commands/`](plugins/ai-driver/commands) for the full command definitions.
 
@@ -69,14 +69,14 @@ See [`plugins/ai-driver/commands/`](plugins/ai-driver/commands) for the full com
 
 AI-driver commands do **not** hard-code a model or effort level — you stay in control. Pick before invoking:
 
-| Command | Suggested session setting |
-|---|---|
-| `/ai-driver:run-spec` | Opus + `xhigh` effort (multi-step planning, TDD, orchestration) |
-| `/ai-driver:review-pr` | Opus + `xhigh` effort (adversarial deep-read of the diff) |
-| `/ai-driver:fix-issues` | Opus + `xhigh` effort (root cause analysis) |
-| `/ai-driver:run-tests` | Haiku or session default (executes commands, parses output) |
-| `/ai-driver:deploy` | Sonnet or session default (follows the deploy doc step-by-step) |
-| `/ai-driver:init` | Session default (file copy + jq merge) |
+| Command                 | Suggested session setting                                       |
+| ----------------------- | --------------------------------------------------------------- |
+| `/ai-driver:run-spec`   | Opus + `xhigh` effort (multi-step planning, TDD, orchestration) |
+| `/ai-driver:review-pr`  | Opus + `xhigh` effort (adversarial deep-read of the diff)       |
+| `/ai-driver:fix-issues` | Opus + `xhigh` effort (root cause analysis)                     |
+| `/ai-driver:run-tests`  | Haiku or session default (executes commands, parses output)     |
+| `/ai-driver:deploy`     | Sonnet or session default (follows the deploy doc step-by-step) |
+| `/ai-driver:init`       | Session default (file copy + jq merge)                          |
 
 Set per-session in Claude Code:
 
@@ -100,7 +100,7 @@ Sonnet + `xhigh` works for all three heavy commands if you want lower cost; Opus
 
 After running `/ai-driver:init`, your project contains:
 
-```
+```markdown
 constitution.md     — project rules (P1-P6, R-001 to R-007)
 AGENTS.md           — workflow for any AI coding tool (imported by CLAUDE.md)
 CLAUDE.md           — one-line @AGENTS.md import (+ any Claude-specific notes)
@@ -115,7 +115,7 @@ Commands and language rules live inside the installed plugin, not in your projec
 
 ## Workflow
 
-```
+```txt
 Human writes spec → /ai-driver:run-spec → AI plan+code+test → PR
                                                               ↓
               /ai-driver:review-pr → Claude+Codex review → merge
@@ -135,6 +135,7 @@ Human writes spec → /ai-driver:run-spec → AI plan+code+test → PR
 ## Design References
 
 Built on research from:
+
 - [GitHub Spec-Kit](https://github.github.com/spec-kit/) — Spec-driven development toolkit
 - [OpenSpec](https://github.com/Fission-AI/OpenSpec) — SDD patterns and change lifecycle concepts
 - [Superpowers](https://github.com/obra/superpowers) — AI engineering discipline plugin

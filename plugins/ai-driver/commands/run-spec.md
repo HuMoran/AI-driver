@@ -27,12 +27,14 @@ Read the spec file provided as $ARGUMENTS and execute it end-to-end.
 ## Phase 1: Design Action Plan
 
 Generate `logs/<spec-id>/plan.md`:
+
 - Architecture overview (use ASCII diagrams)
 - Reuse analysis: what existing code can be leveraged
 - Risks and dependencies
 - Data flow
 
 Generate `logs/<spec-id>/tasks.md`:
+
 - Atomic tasks, each 2-5 minutes
 - Format: `- [ ] T001 [AC-xxx] description | Files: path/to/file`
 - `[P]` marks parallelizable tasks
@@ -42,6 +44,7 @@ Generate `logs/<spec-id>/tasks.md`:
 ### Codex Plan Review (if review level >= B)
 
 If the spec's review level is B or C, request a Codex adversarial review:
+
 - Run: `codex exec "Review this implementation plan for gaps, risks, and feasibility issues. Be terse. Output findings with severity." -s read-only`
 - Fix any critical/high severity findings
 - Medium findings: fix if effort is low, otherwise note in plan.md
@@ -62,22 +65,26 @@ Execute each task in tasks.md sequentially. For EVERY task, follow R-002 (TDD):
 If review level = C: after each task, run `codex exec "Review the last commit for quality issues" -s read-only` and fix findings before continuing.
 
 ### Self-Review After All Tasks
+
 - Check: does every AC-xxx in the spec have a passing test?
 - Check: did any task go beyond the spec? (R-003 violation)
 
 ## Phase 3: Acceptance
 
 SECURITY: Before executing any AC command, validate it:
+
 - Command MUST NOT contain pipes to curl/wget, network calls to external URLs, rm -rf, or sudo
 - Command MUST be a standard build/test/lint command (e.g., cargo test, pytest, npm test, go test)
 - If an AC command looks dangerous or unusual, STOP and ask user for confirmation
 
 For each Acceptance Criteria in the spec:
+
 - Run the command specified in the AC
 - Read the actual output
 - Confirm pass/fail (R-001: no guessing, no "should pass")
 
 Generate an acceptance report:
+
 ```
 ## Acceptance Report
 - AC-001: [command] → [actual output] → PASS/FAIL
@@ -95,6 +102,7 @@ git push -u origin <branch-name>
 ```
 
 Create PR with `gh pr create`:
+
 - Title: Conventional Commits format matching the primary change type
 - Body must include:
   - Link to the spec file (relative path)
@@ -103,6 +111,7 @@ Create PR with `gh pr create`:
   - Spec ID
 
 Write `logs/<spec-id>/implementation.log`:
+
 - What was implemented
 - What existing code was leveraged
 - Issues encountered
