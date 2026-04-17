@@ -65,6 +65,37 @@ cp specs/_template.spec.md specs/my-feature.spec.md
 
 完整命令定义见 [`plugins/ai-driver/commands/`](plugins/ai-driver/commands)。
 
+### 每个命令推荐的模型与思考深度
+
+AI-driver 命令**不**在 frontmatter 里写死 `model` / `effort`，你自己控制。调用前按需切换：
+
+| 命令 | 建议会话设置 |
+|---|---|
+| `/ai-driver:run-spec` | Opus + `xhigh` effort（多步规划 + TDD + 任务编排） |
+| `/ai-driver:review-pr` | Opus + `xhigh` effort（对抗性深读 diff） |
+| `/ai-driver:fix-issues` | Opus + `xhigh` effort（根因分析） |
+| `/ai-driver:run-tests` | Haiku 或会话默认（跑命令、解析输出） |
+| `/ai-driver:deploy` | Sonnet 或会话默认（按部署文档走步骤） |
+| `/ai-driver:init` | 会话默认（文件复制 + jq 合并） |
+
+在 Claude Code 会话里临时切换：
+
+```shell
+/model claude-opus-4-7       # 切本次会话的模型
+/effort xhigh                # 切思考深度
+```
+
+或在项目根 `.claude/settings.json` 里持久化：
+
+```json
+{
+  "model": "claude-opus-4-7",
+  "effort": "xhigh"
+}
+```
+
+想省成本可以用 Sonnet + `xhigh`，三个重命令也能跑；追求最好结果用 Opus。
+
 ## 项目结构（使用 AI-driver 的项目）
 
 跑完 `/ai-driver:init` 后，你的项目长这样：

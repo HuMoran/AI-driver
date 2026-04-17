@@ -65,6 +65,37 @@ cp specs/_template.spec.md specs/my-feature.spec.md
 
 See [`plugins/ai-driver/commands/`](plugins/ai-driver/commands) for the full command definitions.
 
+### Recommended model and effort per command
+
+AI-driver commands do **not** hard-code a model or effort level — you stay in control. Pick before invoking:
+
+| Command | Suggested session setting |
+|---|---|
+| `/ai-driver:run-spec` | Opus + `xhigh` effort (multi-step planning, TDD, orchestration) |
+| `/ai-driver:review-pr` | Opus + `xhigh` effort (adversarial deep-read of the diff) |
+| `/ai-driver:fix-issues` | Opus + `xhigh` effort (root cause analysis) |
+| `/ai-driver:run-tests` | Haiku or session default (executes commands, parses output) |
+| `/ai-driver:deploy` | Sonnet or session default (follows the deploy doc step-by-step) |
+| `/ai-driver:init` | Session default (file copy + jq merge) |
+
+Set per-session in Claude Code:
+
+```shell
+/model claude-opus-4-7       # switch model for this session
+/effort xhigh                # switch reasoning depth
+```
+
+Or persistently in `.claude/settings.json` (under the project root):
+
+```json
+{
+  "model": "claude-opus-4-7",
+  "effort": "xhigh"
+}
+```
+
+Sonnet + `xhigh` works for all three heavy commands if you want lower cost; Opus is recommended for the best verdicts and deepest planning.
+
 ## Project Structure (a project using AI-driver)
 
 After running `/ai-driver:init`, your project contains:
