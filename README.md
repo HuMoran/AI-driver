@@ -59,6 +59,7 @@ cp specs/_template.spec.md specs/my-feature.spec.md
 | `/ai-driver:init`               | Scaffold AI-driver files into the current project         |
 | `/ai-driver:run-spec <file>`    | Execute a spec end-to-end: plan, implement, test, PR      |
 | `/ai-driver:review-pr [number]` | Dual-blind PR review (Claude + Codex)                     |
+| `/ai-driver:merge-pr [number]`  | Merge PR, update CHANGELOG, tag, trigger release          |
 | `/ai-driver:fix-issues`         | Batch-fix GitHub issues labeled `ai-fix`                  |
 | `/ai-driver:run-tests`          | Detect and run the project test suite                     |
 | `/ai-driver:deploy <env>`       | Execute the deploy flow from `deploy/<project>.deploy.md` |
@@ -73,6 +74,7 @@ AI-driver commands do **not** hard-code a model or effort level — you stay in 
 | ----------------------- | --------------------------------------------------------------- |
 | `/ai-driver:run-spec`   | Opus + `xhigh` effort (multi-step planning, TDD, orchestration) |
 | `/ai-driver:review-pr`  | Opus + `xhigh` effort (adversarial deep-read of the diff)       |
+| `/ai-driver:merge-pr`   | Sonnet or session default (deterministic: rewrite CHANGELOG, merge, tag) |
 | `/ai-driver:fix-issues` | Opus + `xhigh` effort (root cause analysis)                     |
 | `/ai-driver:run-tests`  | Haiku or session default (executes commands, parses output)     |
 | `/ai-driver:deploy`     | Sonnet or session default (follows the deploy doc step-by-step) |
@@ -140,6 +142,18 @@ Built on research from:
 - [OpenSpec](https://github.com/Fission-AI/OpenSpec) — SDD patterns and change lifecycle concepts
 - [Superpowers](https://github.com/obra/superpowers) — AI engineering discipline plugin
 - [codex-plugin-cc](https://github.com/openai/codex-plugin-cc) — Codex adversarial review
+
+## Release flow changed in v0.3
+
+Merges to `main` no longer auto-release. Pushing a tag does. Use `/ai-driver:merge-pr` (which rewrites `CHANGELOG.md`'s `[Unreleased]` → `[X.Y.Z]`, merges, tags, pushes), or do it by hand:
+
+```bash
+# Rewrite CHANGELOG.md manually, then:
+git tag vX.Y.Z <merge-commit-sha>
+git push origin vX.Y.Z
+```
+
+The GitHub Release body is extracted byte-for-byte from the matching `## [X.Y.Z]` section of `CHANGELOG.md` — keep that section honest.
 
 ## Upgrade from v0.1
 

@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-04-17
+
+### Added
+
+- `/ai-driver:merge-pr` — ship command that rewrites `CHANGELOG.md` (`[Unreleased]` → `[X.Y.Z]`), commits, merges the PR, tags `main`, and pushes the tag. Supports `--version X.Y.Z`, `--bump major|minor|patch`, `--no-release`, `--squash`, `--no-check`, and `--dry-run`. See `plugins/ai-driver/commands/merge-pr.md`.
+
+### Changed (BREAKING)
+
+- `auto-release.yml` now triggers on `push.tags: ['v*.*.*']` instead of `push.branches: [main]`. GitHub Release notes are extracted byte-for-byte from the matching `## [X.Y.Z]` section of `CHANGELOG.md`, not grepped from commit messages. Fixes the v0.2.0 drift where Release notes dropped BREAKING / Migration / Changed sections. Existing consumers who push to `main` expecting an auto-release must switch to pushing a tag (which is what `/ai-driver:merge-pr` does for you).
+- `plugins/ai-driver/templates/.github/workflows/auto-release.yml` updated to match.
+
+### Migration from v0.2.x
+
+1. Keep a populated `## [Unreleased]` section in your `CHANGELOG.md` while work is in flight.
+2. Instead of merging a PR through the GitHub UI and waiting for the main-triggered workflow, run `/ai-driver:merge-pr <PR>` from Claude Code.
+3. If you prefer the old "push to main → auto-version-from-commits" behavior, pin the v0.2.x template or write your own `auto-release.yml`.
+
 ## [0.2.0] - 2026-04-17
 
 ### Changed (BREAKING)

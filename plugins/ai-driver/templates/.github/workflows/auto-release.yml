@@ -2,7 +2,7 @@ name: Auto Release
 
 on:
   push:
-    branches: [main]
+    tags: ['v*.*.*']
 
 permissions:
   contents: write
@@ -15,89 +15,69 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Check for releasable commits
-        id: check
+      - name: Extract CHANGELOG section to file
         run: |
-          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
-          if [ -z "$LAST_TAG" ]; then
-            COMMITS=$(git log --oneline --format="%s")
-          else
-            COMMITS=$(git log ${LAST_TAG}..HEAD --oneline --format="%s")
+          set -euo pipefail
+          VER="${GITHUB_REF_NAME#v}"
+          # Extractor:
+          #   - structural heading match (no regex interpolation)
+          #   - fenced-code state tracking so '## [' inside ``` does NOT terminate
+          #   - CRLF-tolerant
+          awk -v v="$VER" '
+            BEGIN { found = 0; in_fence = 0 }
+            {
+              # Normalize CRLF
+              sub(/\r$/, "")
+
+              # Toggle fence state on ``` or ~~~ at column 1 (optional info string).
+              if ($0 ~ /^(```|~~~)/) { in_fence = !in_fence; if (found) { print; next } }
+
+              if (!found) {
+                # Only look for the target heading at column 1, outside fences.
+                if (!in_fence && index($0, "## [" v "]") == 1) { found = 1; next }
+              } else {
+                # Terminate only at a real next release heading (not inside a fence).
+                if (!in_fence && index($0, "## [") == 1) { exit }
+                print
+              }
+            }
+          ' CHANGELOG.md > release-notes.md
+
+          # Empty-section check: require at least one non-heading, non-marker-only line.
+          # Strips out headings, blank lines, bare fence delimiters, and bare/empty
+          # markers so that a section which only contains "- " or "| " still fails.
+          SUBSTANTIVE=$(awk '
+            BEGIN { in_fence = 0 }
+            {
+              sub(/\r$/, "")
+              if ($0 ~ /^(```|~~~)/) { in_fence = !in_fence; next }
+              if (in_fence) { if (/[^[:space:]]/) print "CONTENT"; next }
+              # Skip blank
+              if ($0 ~ /^[[:space:]]*$/) next
+              # Skip headings
+              if ($0 ~ /^#+[[:space:]]/) next
+              # Skip bare bullet / ordered / table / fence markers with no payload
+              if ($0 ~ /^([*+-]|[0-9]+\.)[[:space:]]*$/) next
+              if ($0 ~ /^\|[[:space:]-]*\|?[[:space:]]*$/) next
+              print "CONTENT"
+            }
+          ' release-notes.md | wc -l)
+
+          if [ "$SUBSTANTIVE" -lt 1 ]; then
+            echo "::error::CHANGELOG.md section for $VER has no substantive content (only headings, blank lines, or empty markers). Populate it under ### Added / ### Fixed / ### Changed."
+            exit 1
           fi
 
-          HAS_FEAT=$(echo "$COMMITS" | grep -c "^feat" || true)
-          HAS_FIX=$(echo "$COMMITS" | grep -c "^fix" || true)
-          HAS_BREAKING=$(echo "$COMMITS" | grep -c "BREAKING CHANGE" || true)
+          echo "Extracted release notes ($(wc -c < release-notes.md) bytes, $SUBSTANTIVE substantive lines) for $GITHUB_REF_NAME"
+          echo "--- preview ---"
+          head -40 release-notes.md
 
-          if [ "$HAS_FEAT" -gt 0 ] || [ "$HAS_FIX" -gt 0 ] || [ "$HAS_BREAKING" -gt 0 ]; then
-            echo "should_release=true" >> $GITHUB_OUTPUT
-          else
-            echo "should_release=false" >> $GITHUB_OUTPUT
-          fi
-
-          echo "has_feat=$HAS_FEAT" >> $GITHUB_OUTPUT
-          echo "has_fix=$HAS_FIX" >> $GITHUB_OUTPUT
-          echo "has_breaking=$HAS_BREAKING" >> $GITHUB_OUTPUT
-
-      - name: Calculate next version
-        if: steps.check.outputs.should_release == 'true'
-        id: version
-        run: |
-          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
-          VERSION=${LAST_TAG#v}
-          IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
-
-          if [ "${{ steps.check.outputs.has_breaking }}" -gt 0 ]; then
-            MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0
-          elif [ "${{ steps.check.outputs.has_feat }}" -gt 0 ]; then
-            MINOR=$((MINOR + 1)); PATCH=0
-          else
-            PATCH=$((PATCH + 1))
-          fi
-
-          echo "tag=v${MAJOR}.${MINOR}.${PATCH}" >> $GITHUB_OUTPUT
-          echo "version=${MAJOR}.${MINOR}.${PATCH}" >> $GITHUB_OUTPUT
-
-      - name: Generate changelog entry
-        if: steps.check.outputs.should_release == 'true'
-        id: changelog
-        run: |
-          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
-          if [ -z "$LAST_TAG" ]; then
-            RANGE="HEAD"
-          else
-            RANGE="${LAST_TAG}..HEAD"
-          fi
-
-          {
-            echo "body<<CHANGELOG_EOF"
-            echo "## [${{ steps.version.outputs.version }}] - $(date +%Y-%m-%d)"
-            echo ""
-
-            FEATS=$(git log $RANGE --oneline --format="%s" | grep "^feat" || true)
-            if [ -n "$FEATS" ]; then
-              echo "### Added"
-              echo "$FEATS" | sed 's/^feat[^:]*: /- /'
-              echo ""
-            fi
-
-            FIXES=$(git log $RANGE --oneline --format="%s" | grep "^fix" || true)
-            if [ -n "$FIXES" ]; then
-              echo "### Fixed"
-              echo "$FIXES" | sed 's/^fix[^:]*: /- /'
-              echo ""
-            fi
-
-            echo "CHANGELOG_EOF"
-          } >> $GITHUB_OUTPUT
-
-      - name: Create tag and release
-        if: steps.check.outputs.should_release == 'true'
+      - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          git tag ${{ steps.version.outputs.tag }}
-          git push origin ${{ steps.version.outputs.tag }}
-          gh release create ${{ steps.version.outputs.tag }} \
-            --title "${{ steps.version.outputs.tag }}" \
-            --notes "${{ steps.changelog.outputs.body }}"
+          # --notes-file preserves every byte from the awk output, avoiding
+          # shell-var trailing-newline stripping and heredoc delimiter collisions.
+          gh release create "$GITHUB_REF_NAME" \
+            --title "$GITHUB_REF_NAME" \
+            --notes-file release-notes.md

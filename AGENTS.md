@@ -22,7 +22,8 @@ When developing AI-driver itself, obey `constitution.md` (P1–P6 + R-001 to R-0
 
 ## Key workflows
 
-- Ship v0.2 → v0.3: run `/ai-driver:run-spec` on a spec in `specs/`. That's the plugin developing itself.
+- Ship v0.X → v0.Y: `/ai-driver:run-spec specs/<feature>.spec.md` → `/ai-driver:review-pr` → `/ai-driver:merge-pr`. That's the plugin developing itself end-to-end, including its own release.
+- Keep `CHANGELOG.md`'s `## [Unreleased]` populated while a PR is in flight. `/ai-driver:merge-pr` converts it into the release section on merge.
 - Update templates: edit `plugins/ai-driver/templates/*` and bump the version in **exactly one place**. For our relative-path plugin, bump it in `.claude-plugin/marketplace.json` (the entry's `version` field) and leave `plugins/ai-driver/.claude-plugin/plugin.json` without a `version` field. See `docs/research/2026-04-17-plugin-interface.md` §3 for why double-writing causes silent shadowing.
 
 ## Local test install
