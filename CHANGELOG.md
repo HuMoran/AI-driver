@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-04-17
+
 ### Fixed
 
 - `/ai-driver:merge-pr` Step 2 now also bumps the `version` fields in `.claude-plugin/marketplace.json` (`metadata.version` and matching `plugins[].version`) and `.claude-plugin/plugin.json` (only if already present) as part of the same `chore(release): vX.Y.Z` commit. Closes the v0.3.0 gap where `claude plugin update` could not detect a new release because `marketplace.json` was still at the previous version. Non-plugin projects are unaffected (no-op when `.claude-plugin/` is absent).
