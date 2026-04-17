@@ -1,0 +1,5 @@
+# Codex project-level configuration
+# See: https://developers.openai.com/codex/config-advanced
+
+model = "gpt-5.4"
+model_reasoning_effort = "high"
