@@ -1,6 +1,6 @@
-# /deploy: Deploy to staging or production
+# /ai-driver:deploy: Deploy to staging or production
 
-Usage: /deploy <staging|production>
+Usage: /ai-driver:deploy <staging|production>
 
 ## Pre-flight
 
@@ -22,7 +22,7 @@ From the deploy doc's "Build" (or "编译构建") section:
 
 ## Staging Deploy
 
-1. **Gate**: Run the project's test suite (detect from .claude/rules/ or auto-detect: cargo test / pytest / npm test / go test / flutter test) — if any test fails, STOP
+1. **Gate**: Run the project's test suite (detect from ${CLAUDE_PLUGIN_ROOT}/rules/ or auto-detect: cargo test / pytest / npm test / go test / flutter test) — if any test fails, STOP
 2. **Build**: Execute the build steps from the deploy doc (if not already built)
 3. **Deploy**: Execute the staging deploy command from the deploy doc
 4. **Smoke Test**: Run the smoke test commands from the deploy doc
@@ -40,7 +40,7 @@ From the deploy doc's "Build" (or "编译构建") section:
 ## Production Deploy
 
 1. **Gate**: Confirm staging passed (check recent deploy report)
-2. **Gate**: Run the project's test suite (detect from .claude/rules/ or auto-detect: cargo test / pytest / npm test / go test / flutter test)
+2. **Gate**: Run the project's test suite (detect from ${CLAUDE_PLUGIN_ROOT}/rules/ or auto-detect: cargo test / pytest / npm test / go test / flutter test)
 3. **Confirm**: Show change summary to user, wait for explicit confirmation
 4. **Build**: Execute the build steps from the deploy doc (if not already built)
 5. **Deploy**: Execute the production deploy command from the deploy doc

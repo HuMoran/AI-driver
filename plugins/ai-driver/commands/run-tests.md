@@ -1,16 +1,16 @@
-# /run-tests: Run project test suite
+# /ai-driver:run-tests: Run project test suite
 
-Usage: /run-tests [--type unit|integration|e2e|all]
+Usage: /ai-driver:run-tests [--type unit|integration|e2e|all]
 
 Default: --type all
 
 ## Pre-flight
 
-Read `.claude/rules/*.md` to find test commands for this project's language.
+Read `${CLAUDE_PLUGIN_ROOT}/rules/*.md` to find test commands for this project's language.
 
 ## Step 1: Detect Test Commands
 
-From `.claude/rules/<language>.md`, extract:
+From `${CLAUDE_PLUGIN_ROOT}/rules/<language>.md`, extract:
 - Unit test command (e.g., `cargo test`, `pytest`, `npm test`)
 - Integration test command (if defined)
 - E2E test command (if defined)

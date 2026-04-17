@@ -1,6 +1,6 @@
-# /review-pr: Dual-blind review with Claude + Codex
+# /ai-driver:review-pr: Dual-blind review with Claude + Codex
 
-Usage: /review-pr [PR-number]
+Usage: /ai-driver:review-pr [PR-number]
 
 You are an AI code reviewer performing a dual-blind review.
 If no PR number is given, find the PR for the current branch.

@@ -1,6 +1,6 @@
-# /run-spec: Execute a spec from plan to PR
+# /ai-driver:run-spec: Execute a spec from plan to PR
 
-Usage: /run-spec <path-to-spec-file>
+Usage: /ai-driver:run-spec <path-to-spec-file>
 
 You are an AI engineer executing a spec-driven development workflow.
 Read the spec file provided as $ARGUMENTS and execute it end-to-end.
@@ -8,7 +8,7 @@ Read the spec file provided as $ARGUMENTS and execute it end-to-end.
 ## Pre-flight
 
 1. Read the spec file at `$ARGUMENTS`
-2. Read `.claude/rules/*.md` files relevant to this project's language
+2. Read `${CLAUDE_PLUGIN_ROOT}/rules/*.md` files relevant to this project's language
 3. Validate the spec has required fields: Goal, Acceptance Criteria (at least one AC-xxx), Meta section. If any are missing or still contain template placeholders, STOP and report to the user.
 4. Check for `[NEEDS CLARIFICATION]` markers in the spec — if any exist, STOP and report them to the user. Do not proceed until they are resolved.
 
@@ -55,7 +55,7 @@ Execute each task in tasks.md sequentially. For EVERY task, follow R-002 (TDD):
 3. Write the minimal implementation to make the test pass
 4. Run the test — confirm it PASSES (GREEN)
 5. Refactor if needed
-6. Run the language's format tool (per .claude/rules/<lang>.md, R-006)
+6. Run the language's format tool (per ${CLAUDE_PLUGIN_ROOT}/rules/<lang>.md, R-006)
 7. `git add` changed files + `git commit` with Conventional Commits message (R-005)
 8. Mark the task `[x]` in tasks.md and commit the updated tasks.md
 

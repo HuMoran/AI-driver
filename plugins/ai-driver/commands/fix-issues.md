@@ -1,6 +1,6 @@
-# /fix-issues: Batch-fix GitHub issues
+# /ai-driver:fix-issues: Batch-fix GitHub issues
 
-Usage: /fix-issues [--label <label>] [--limit <n>]
+Usage: /ai-driver:fix-issues [--label <label>] [--limit <n>]
 
 Defaults: --label ai-fix --limit 5
 
@@ -56,7 +56,7 @@ If no spec found in comments:
 gh issue comment <number> --body "AI is processing this issue..."
 ```
 
-## Step 4: Execute Fix (inline workflow, same as /run-spec)
+## Step 4: Execute Fix (inline workflow, same as /ai-driver:run-spec)
 
 For the confirmed spec, execute the full workflow inline:
 
