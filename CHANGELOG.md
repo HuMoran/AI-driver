@@ -5,6 +5,8 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
 ## [0.2.0] - 2026-04-17
 
 ### Changed (BREAKING)
@@ -43,12 +45,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 3. Update any custom scripts that called `/run-spec` etc. to use the `ai-driver:` namespace.
 4. Optional: for old `specs/p01_foo.spec.md` files, rename to `specs/foo.spec.md` and trim the Meta block (the `ID` / `Status` / `Branch` lines can be deleted; keep `Date` and `Review Level`). Existing files still parse if left alone.
 
-## [Unreleased 0.1 (pre-plugin)]
+## [0.1.0] - 2026-04-16 (pre-plugin)
 
 ### Added
-- AI-driver framework initial structure
+
+- AI-driver framework initial structure (distributed via `git clone`)
 - Spec template with Given-When-Then acceptance criteria
 - Constitution with principles and operational rules
-- Slash commands: /run-spec, /review-pr, /fix-issues, /run-tests, /deploy
+- Slash commands: `/run-spec`, `/review-pr`, `/fix-issues`, `/run-tests`, `/deploy`
 - Language rules: Rust, Python, TypeScript, Go, Flutter
 - GitHub Actions: auto-release, CI

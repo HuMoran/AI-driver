@@ -9,28 +9,24 @@ Sets up AI-driver files in the current working directory. **Merge-safe by defaul
 - `--with-ci` — also copy `.github/workflows/{auto-release,ci}.yml`
 - `--with-deploy` — also copy `deploy/_template.deploy.md` (and `.zh-CN.md`)
 - `--with-codex` — also copy `.codex/config.toml`
-- `--lang en|zh-CN` — language preference (default: `en`). Currently only affects whether `*.zh-CN.md` template copies are the primary example in the summary.
-- `--force` — overwrite existing files. The original is backed up to `<path>.bak` first. Never overwrite without `--force`.
+- `--lang en|zh-CN` — language preference (default: `en`). Currently only affects which template variant is highlighted in the final summary.
+- `--force` — overwrite existing files. The original is backed up to `<path>.bak.YYYYMMDDHHMMSS` first. Never overwrites without `--force`.
 
-## Preconditions
+## Step 1: Preflight (all fatal checks first; make ZERO writes until every check passes)
 
-1. `jq` must be available (used to merge `.claude/settings.json`). If missing, abort with: `"jq not found. Install jq before running /ai-driver:init."`
-2. Current working directory must be writable.
+Do **all** of the following **before** copying anything. If any fails, print a one-line error and abort without touching any file.
 
-## Steps
+1. **Parse flags** from `$ARGUMENTS`. Unknown flags → abort with message listing valid flags. `--lang` must equal `en` or `zh-CN`; reject anything else.
+2. **Check `jq`**: `command -v jq >/dev/null` — if missing, abort: `"jq not found. Install jq (brew install jq / apt-get install jq) before running /ai-driver:init."`
+3. **Check plugin templates dir**: `test -d "${CLAUDE_PLUGIN_ROOT}/templates"` — if missing, abort: `"Plugin templates not found at ${CLAUDE_PLUGIN_ROOT}/templates/. Reinstall the ai-driver plugin."`
+4. **Check CWD is writable**: `test -w .` — if not, abort with a clear message.
+5. **If `./.claude/settings.json` exists, verify it is valid JSON** now (not later): `jq -e . ./.claude/settings.json >/dev/null` — if it fails, abort: `"ERROR: ./.claude/settings.json is not valid JSON. Fix it and rerun."`
 
-### 1. Parse flags from `$ARGUMENTS`
+Only when **all five** pass do you proceed. This guarantees the "leave all files untouched on fatal error" contract.
 
-Treat unknown flags as an error and abort with a clear message listing valid flags. The `--lang` value must be exactly `en` or `zh-CN`; reject anything else.
+## Step 2: Copy core files (always)
 
-### 2. Locate the template source
-
-The templates live inside the plugin at `${CLAUDE_PLUGIN_ROOT}/templates/`. Confirm this directory exists before proceeding. If it does not, abort with:
-`"Plugin templates not found at ${CLAUDE_PLUGIN_ROOT}/templates/. Reinstall the ai-driver plugin."`
-
-### 3. Copy core files (always)
-
-For each `<src, dst>` pair below, apply the **merge-safe copy** rule (defined in §5):
+For each `<src, dst>` pair below, apply the **merge-safe copy** rule (defined in §4):
 
 | Source (inside plugin) | Destination (project root) |
 |---|---|
@@ -39,95 +35,87 @@ For each `<src, dst>` pair below, apply the **merge-safe copy** rule (defined in
 | `${CLAUDE_PLUGIN_ROOT}/templates/specs/_template.spec.md` | `./specs/_template.spec.md` |
 | `${CLAUDE_PLUGIN_ROOT}/templates/specs/_template.spec.zh-CN.md` | `./specs/_template.spec.zh-CN.md` |
 
-Create the `./specs/` directory if it does not exist.
+Create `./specs/` if it does not exist.
 
-### 4. Handle `CLAUDE.md` specially (import-aware)
+## Step 3: Handle `CLAUDE.md` specially (import-aware)
 
-`CLAUDE.md` is the one file that does NOT use the merge-safe copy rule. Instead:
+`CLAUDE.md` does NOT follow the merge-safe copy rule. Instead:
 
-- If `./CLAUDE.md` **does not exist**: write a single line `@AGENTS.md` followed by a newline.
-- If `./CLAUDE.md` **exists** and already contains a line matching `^@AGENTS\.md$`: leave it alone.
-- If `./CLAUDE.md` **exists** but does NOT import `AGENTS.md`: append two lines to the end: a blank line, then `@AGENTS.md`. Do not modify any existing content.
+- If `./CLAUDE.md` **does not exist**: write a single line `@AGENTS.md\n`.
+- If `./CLAUDE.md` **exists** and any line already matches `^@(\./)?AGENTS\.md$` (to catch both `@AGENTS.md` and `@./AGENTS.md`): leave it alone.
+- If `./CLAUDE.md` **exists** without an `@AGENTS.md` import: **prepend** `@AGENTS.md\n\n` at the top of the file. Do not modify any existing content.
 
-This preserves user-authored CLAUDE.md content while ensuring Claude Code loads `AGENTS.md`.
+The import must come first so Claude-specific notes added later by the user can override imported AGENTS.md instructions (matches the documented pattern in Claude Code's memory docs).
 
-### 5. Merge-safe copy rule (the only copy rule used elsewhere)
+## Step 4: Merge-safe copy rule (used by steps 2 and 5)
 
 For a given `<src, dst>`:
 
-- If `dst` does not exist: copy `src` to `dst`.
+- If `dst` does not exist: create parent dir as needed, copy `src` to `dst`. Print `"CREATE: <dst>"`.
 - If `dst` exists and `--force` is NOT set: print `"SKIP: <dst> already exists"` and continue.
 - If `dst` exists and `--force` IS set:
-  1. Copy the current `dst` to `<dst>.bak` (overwrite any prior `.bak`).
-  2. Copy `src` to `dst`.
-  3. Print `"OVERWRITE: <dst> (backup at <dst>.bak)"`.
+  1. Compute a backup path: `<dst>.bak.$(date +%Y%m%d%H%M%S)`.
+  2. Copy the current `dst` to that backup path (never clobber a prior `.bak.*`).
+  3. Copy `src` to `dst`.
+  4. Print `"OVERWRITE: <dst> (backup at <dst>.bak.<timestamp>)"`.
 
 Never delete a file. Never move a file out of the project root.
 
-### 6. Optional copies
+## Step 5: Optional copies
 
-If `--with-deploy` is set, apply merge-safe copy for:
+If `--with-deploy`, apply merge-safe copy:
 
 - `${CLAUDE_PLUGIN_ROOT}/templates/deploy/_template.deploy.md` → `./deploy/_template.deploy.md`
 - `${CLAUDE_PLUGIN_ROOT}/templates/deploy/_template.deploy.zh-CN.md` → `./deploy/_template.deploy.zh-CN.md`
 
-If `--with-ci` is set:
+If `--with-ci`:
 
 - `${CLAUDE_PLUGIN_ROOT}/templates/.github/workflows/auto-release.yml` → `./.github/workflows/auto-release.yml`
 - `${CLAUDE_PLUGIN_ROOT}/templates/.github/workflows/ci.yml` → `./.github/workflows/ci.yml`
 
-If `--with-codex` is set:
+If `--with-codex`:
 
 - `${CLAUDE_PLUGIN_ROOT}/templates/.codex/config.toml` → `./.codex/config.toml`
 
-Create intermediate directories as needed.
+## Step 6: Merge `.claude/settings.json`
 
-### 7. Merge `.claude/settings.json`
-
-Compute the default settings block:
+Compute the **minimal** default block. It only enables the ai-driver plugin by name — it does NOT declare a marketplace source. The marketplace was added by the user before running `init`, and hardcoding any specific source here would silently repoint forks, internal mirrors, or local-path installs to an upstream they may not want.
 
 ```json
 {
-  "extraKnownMarketplaces": {
-    "ai-driver": {
-      "source": {
-        "source": "github",
-        "repo": "HuMoran/AI-driver"
-      }
-    }
-  },
   "enabledPlugins": {
     "ai-driver@ai-driver": true
   }
 }
 ```
 
-Write it using this rule:
+If the team wants teammates to auto-prompt for the marketplace on trust, they can add `extraKnownMarketplaces` manually pointing at whichever fork / mirror they actually use. Document that in the printed summary (see §7).
 
-- If `./.claude/settings.json` does not exist: create `./.claude/` and write the block above as the file. Print `"CREATE: .claude/settings.json"`.
-- If `./.claude/settings.json` exists: deep-merge the defaults **into** the existing file, with **existing keys winning on conflict**. Use `jq`:
+Write it with this rule (no process substitution — use stdin so it works on any POSIX-ish shell):
+
+- If `./.claude/settings.json` does not exist: create `./.claude/` and write the block above. Print `"CREATE: .claude/settings.json"`.
+- If `./.claude/settings.json` exists (we already validated it is valid JSON in preflight): deep-merge defaults **into** the existing file with **existing keys winning on conflict**. The rule `.[1] * .[0]` in jq means "take the second input, then overlay the first on top, right-hand wins on conflict"; so putting defaults FIRST and existing file SECOND gives "existing wins":
 
   ```bash
-  # Only overwrite file atomically after a successful merge
-  jq -s '.[0] * .[1] | .[0]' ./.claude/settings.json <(echo "$DEFAULTS") > ./.claude/settings.json.new \
-    && mv ./.claude/settings.json ./.claude/settings.json.bak \
-    && mv ./.claude/settings.json.new ./.claude/settings.json
+  tmp="./.claude/settings.json.new.$$"
+  bak="./.claude/settings.json.bak.$(date +%Y%m%d%H%M%S)"
+  printf '%s' "$DEFAULTS" | jq -s '.[1] * .[0]' ./.claude/settings.json - > "$tmp"
+  cp ./.claude/settings.json "$bak"
+  mv "$tmp" ./.claude/settings.json
   ```
 
-  Wait — the merge order in `jq -s '.[0] * .[1]'` makes the right side win. That is the opposite of "existing wins". Correct form: `jq -s '.[1] * .[0]'` (defaults first, existing file second, right-wins-rule means existing wins on conflict). Print `"MERGE: .claude/settings.json (backup at .claude/settings.json.bak)"`.
+  Print `"MERGE: .claude/settings.json (backup at $bak)"`. If any of those three commands fails, remove `$tmp` and abort — but the existing file is untouched (we only `mv` on the last line).
 
-  If the existing file is not valid JSON, abort with: `"ERROR: .claude/settings.json is not valid JSON. Fix it and rerun."` Do not write the `.bak` in this case.
+## Step 7: Print summary
 
-### 8. Print summary
+Group the actions taken:
 
-Output the list of actions taken, grouped as:
+- **Created** — new files
+- **Skipped (already present)** — files left untouched
+- **Overwritten (--force)** — files replaced with `.bak.<timestamp>` backups
+- **Merged** — `.claude/settings.json`
 
-- **Created**: new files
-- **Skipped (already present)**: files left untouched
-- **Overwritten (--force)**: files replaced (with `.bak` paths)
-- **Merged**: `.claude/settings.json`
-
-End with the next steps:
+Then the next steps:
 
 ```txt
 Next steps:
@@ -135,15 +123,23 @@ Next steps:
   2. Write your first spec:   cp specs/_template.spec.md specs/<your-feature>.spec.md
   3. Run the spec:            /ai-driver:run-spec specs/<your-feature>.spec.md
   4. Review the PR:           /ai-driver:review-pr
+
+Optional: if you want teammates to be prompted to install ai-driver automatically
+when they trust this repo, add your marketplace source to .claude/settings.json:
+  "extraKnownMarketplaces": {
+    "<name>": { "source": { "source": "github", "repo": "<owner>/<repo>" } }
+  }
+Use whichever source (upstream, fork, or internal mirror) you want the team to use.
 ```
 
 ## Error handling
 
-- Any fatal error (missing jq, bad flag, invalid JSON in existing settings.json, unreadable plugin templates dir) must halt execution, print a clear one-line error, and leave all files untouched. Never leave the project in a half-initialized state.
+Any fatal error from Step 1 preflight halts execution before any write. After Step 1, the only other failure-prone operation is the settings.json merge in Step 6, which writes via temp-file + rename so the original is only replaced on success.
 
 ## Out of scope
 
 - Does not git-init the project.
 - Does not write `.gitignore`.
 - Does not install the plugin itself (that happened before the command could run).
-- Does not rewrite existing `CLAUDE.md` content other than appending `@AGENTS.md`.
+- Does not rewrite existing `CLAUDE.md` content other than prepending `@AGENTS.md`.
+- Does not hardcode any specific marketplace source into the team settings.

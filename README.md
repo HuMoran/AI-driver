@@ -81,11 +81,11 @@ AI-driver commands do **not** hard-code a model or effort level — you stay in 
 Set per-session in Claude Code:
 
 ```shell
-/model claude-opus-4-7       # switch model for this session
+/model <latest-opus>         # switch model for this session (see /model for current IDs)
 /effort xhigh                # switch reasoning depth
 ```
 
-Or persistently in `.claude/settings.json` (under the project root):
+Or persistently in `.claude/settings.json` (under the project root) — use the exact model ID your Claude Code version advertises via `/model`, e.g.:
 
 ```json
 {

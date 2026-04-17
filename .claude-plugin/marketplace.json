@@ -1,8 +1,7 @@
 {
   "name": "ai-driver",
   "owner": {
-    "name": "HuMoran",
-    "url": "https://github.com/HuMoran"
+    "name": "HuMoran"
   },
   "metadata": {
     "description": "Language-agnostic AI-driven development framework. Humans write specs, AI does the rest.",
