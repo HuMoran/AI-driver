@@ -19,36 +19,56 @@ jobs:
         run: |
           set -euo pipefail
           VER="${GITHUB_REF_NAME#v}"
-          # Structural match on the version heading — no regex interpolation,
-          # so '1.2.3' does not match '1x2y3'.
+          # Extractor:
+          #   - structural heading match (no regex interpolation)
+          #   - fenced-code state tracking so '## [' inside ``` does NOT terminate
+          #   - CRLF-tolerant
           awk -v v="$VER" '
-            BEGIN { found = 0 }
+            BEGIN { found = 0; in_fence = 0 }
             {
+              # Normalize CRLF
+              sub(/\r$/, "")
+
+              # Toggle fence state on ``` or ~~~ at column 1 (optional info string).
+              if ($0 ~ /^(```|~~~)/) { in_fence = !in_fence; if (found) { print; next } }
+
               if (!found) {
-                # Check if this line is the heading for our version:
-                # "## [<version>]" possibly followed by " - <date>".
-                if (index($0, "## [" v "]") == 1) {
-                  found = 1
-                  next
-                }
+                # Only look for the target heading at column 1, outside fences.
+                if (!in_fence && index($0, "## [" v "]") == 1) { found = 1; next }
               } else {
-                # Stop at the next top-level release heading.
-                if ($0 ~ /^## \[/) { exit }
+                # Terminate only at a real next release heading (not inside a fence).
+                if (!in_fence && index($0, "## [") == 1) { exit }
                 print
               }
             }
           ' CHANGELOG.md > release-notes.md
 
-          # Empty-section check: require at least one non-blank, non-heading line.
-          if ! grep -qE '^[^#[:space:]]|^[[:space:]]+[^[:space:]]' release-notes.md; then
-            # Also accept a bullet/table/code fence line.
-            if ! grep -qE '^(- |\* |\+ |[0-9]+\. |\||`)' release-notes.md; then
-              echo "::error::CHANGELOG.md section for $VER is empty or contains only headings. Populate it under ### Added / ### Fixed / ### Changed."
-              exit 1
-            fi
+          # Empty-section check: require at least one non-heading, non-marker-only line.
+          # Strips out headings, blank lines, bare fence delimiters, and bare/empty
+          # markers so that a section which only contains "- " or "| " still fails.
+          SUBSTANTIVE=$(awk '
+            BEGIN { in_fence = 0 }
+            {
+              sub(/\r$/, "")
+              if ($0 ~ /^(```|~~~)/) { in_fence = !in_fence; next }
+              if (in_fence) { if (/[^[:space:]]/) print "CONTENT"; next }
+              # Skip blank
+              if ($0 ~ /^[[:space:]]*$/) next
+              # Skip headings
+              if ($0 ~ /^#+[[:space:]]/) next
+              # Skip bare bullet / ordered / table / fence markers with no payload
+              if ($0 ~ /^([*+-]|[0-9]+\.)[[:space:]]*$/) next
+              if ($0 ~ /^\|[[:space:]-]*\|?[[:space:]]*$/) next
+              print "CONTENT"
+            }
+          ' release-notes.md | wc -l)
+
+          if [ "$SUBSTANTIVE" -lt 1 ]; then
+            echo "::error::CHANGELOG.md section for $VER has no substantive content (only headings, blank lines, or empty markers). Populate it under ### Added / ### Fixed / ### Changed."
+            exit 1
           fi
 
-          echo "Extracted release notes ($(wc -c < release-notes.md) bytes) for $GITHUB_REF_NAME"
+          echo "Extracted release notes ($(wc -c < release-notes.md) bytes, $SUBSTANTIVE substantive lines) for $GITHUB_REF_NAME"
           echo "--- preview ---"
           head -40 release-notes.md
 

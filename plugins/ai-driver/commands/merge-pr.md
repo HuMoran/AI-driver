@@ -118,11 +118,22 @@ else
 fi
 ```
 
-**Capture the merge commit SHA** (this is the HIGH-risk point — without it we race against other PRs merging):
+**Capture the merge commit SHA** (race-free against other PRs merging). GitHub has eventual consistency on `mergeCommit.oid` after `gh pr merge` returns — the field may be briefly null. Poll with a short backoff so a slow replica does not leave the PR merged but untagged:
 
 ```bash
-MERGE_SHA=$(gh pr view "$PR" --json mergeCommit --jq .mergeCommit.oid)
-[ -z "$MERGE_SHA" ] && { echo "ERROR: could not read merge commit SHA"; exit 1; }
+MERGE_SHA=""
+for attempt in 1 2 3 4 5; do
+  MERGE_SHA=$(gh pr view "$PR" --json mergeCommit --jq '.mergeCommit.oid // ""')
+  [ -n "$MERGE_SHA" ] && break
+  sleep "$attempt"   # 1s, 2s, 3s, 4s, 5s — total 15s worst case
+done
+if [ -z "$MERGE_SHA" ]; then
+  echo "ERROR: mergeCommit.oid not available after 15s of polling."
+  echo "       PR #$PR is merged but not yet tagged. Recover with:"
+  echo "         SHA=\$(gh pr view $PR --json mergeCommit --jq .mergeCommit.oid)"
+  echo "         git tag v$NEXT \"\$SHA\" -m v$NEXT && git push origin v$NEXT"
+  exit 1
+fi
 ```
 
 If `gh pr merge` failed: the `CHANGELOG.md` release commit is on the PR branch but not merged. Recovery options:
