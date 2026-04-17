@@ -15,29 +15,49 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Extract CHANGELOG section
-        id: notes
+      - name: Extract CHANGELOG section to file
         run: |
+          set -euo pipefail
           VER="${GITHUB_REF_NAME#v}"
-          BODY=$(awk -v v="$VER" '
-            $0 ~ "^## \\[" v "\\]" { found=1; next }
-            found && /^## \[/ { exit }
-            found { print }
-          ' CHANGELOG.md)
-          if [ -z "$(printf '%s' "$BODY" | tr -d '[:space:]')" ]; then
-            echo "::error::CHANGELOG.md has no non-empty section for $VER"
-            exit 1
+          # Structural match on the version heading — no regex interpolation,
+          # so '1.2.3' does not match '1x2y3'.
+          awk -v v="$VER" '
+            BEGIN { found = 0 }
+            {
+              if (!found) {
+                # Check if this line is the heading for our version:
+                # "## [<version>]" possibly followed by " - <date>".
+                if (index($0, "## [" v "]") == 1) {
+                  found = 1
+                  next
+                }
+              } else {
+                # Stop at the next top-level release heading.
+                if ($0 ~ /^## \[/) { exit }
+                print
+              }
+            }
+          ' CHANGELOG.md > release-notes.md
+
+          # Empty-section check: require at least one non-blank, non-heading line.
+          if ! grep -qE '^[^#[:space:]]|^[[:space:]]+[^[:space:]]' release-notes.md; then
+            # Also accept a bullet/table/code fence line.
+            if ! grep -qE '^(- |\* |\+ |[0-9]+\. |\||`)' release-notes.md; then
+              echo "::error::CHANGELOG.md section for $VER is empty or contains only headings. Populate it under ### Added / ### Fixed / ### Changed."
+              exit 1
+            fi
           fi
-          {
-            echo "body<<CHANGELOG_EOF"
-            printf '%s\n' "$BODY"
-            echo "CHANGELOG_EOF"
-          } >> "$GITHUB_OUTPUT"
+
+          echo "Extracted release notes ($(wc -c < release-notes.md) bytes) for $GITHUB_REF_NAME"
+          echo "--- preview ---"
+          head -40 release-notes.md
 
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          # --notes-file preserves every byte from the awk output, avoiding
+          # shell-var trailing-newline stripping and heredoc delimiter collisions.
           gh release create "$GITHUB_REF_NAME" \
             --title "$GITHUB_REF_NAME" \
-            --notes "${{ steps.notes.outputs.body }}"
+            --notes-file release-notes.md

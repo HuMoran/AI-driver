@@ -143,6 +143,18 @@ deploy/             — 可选的部署文档
 - [Superpowers](https://github.com/obra/superpowers) — AI 工程纪律插件
 - [codex-plugin-cc](https://github.com/openai/codex-plugin-cc) — Codex 对抗性审查
 
+## v0.3 发版流程变更
+
+合并到 `main` 不再自动触发 release，改为 **push tag 触发**。用 `/ai-driver:merge-pr`（会改写 `CHANGELOG.md` 的 `[Unreleased]` → `[X.Y.Z]`、合并、打 tag、push），或者手工做：
+
+```bash
+# 手动先改写 CHANGELOG.md，然后：
+git tag vX.Y.Z <merge-commit-sha>
+git push origin vX.Y.Z
+```
+
+GitHub Release 正文逐字节取自 `CHANGELOG.md` 的 `## [X.Y.Z]` 段 —— 所以 CHANGELOG 要写准。
+
 ## 从 v0.1 升级
 
 原来的 `git clone` 方式已废弃。升级已有的 AI-driver 项目：

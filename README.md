@@ -143,6 +143,18 @@ Built on research from:
 - [Superpowers](https://github.com/obra/superpowers) — AI engineering discipline plugin
 - [codex-plugin-cc](https://github.com/openai/codex-plugin-cc) — Codex adversarial review
 
+## Release flow changed in v0.3
+
+Merges to `main` no longer auto-release. Pushing a tag does. Use `/ai-driver:merge-pr` (which rewrites `CHANGELOG.md`'s `[Unreleased]` → `[X.Y.Z]`, merges, tags, pushes), or do it by hand:
+
+```bash
+# Rewrite CHANGELOG.md manually, then:
+git tag vX.Y.Z <merge-commit-sha>
+git push origin vX.Y.Z
+```
+
+The GitHub Release body is extracted byte-for-byte from the matching `## [X.Y.Z]` section of `CHANGELOG.md` — keep that section honest.
+
 ## Upgrade from v0.1
 
 The previous `git clone` flow is gone. To upgrade an existing AI-driver-style project:

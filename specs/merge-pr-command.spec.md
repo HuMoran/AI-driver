@@ -139,7 +139,12 @@ Machine-executable checklist:
 - [ ] AC-006: `CHANGELOG.md` has a non-empty `## [Unreleased]` section with entries describing this spec's changes — later the merge-pr run converts it to `## [0.3.0]`.
 - [ ] AC-007: `plugins/ai-driver/templates/AGENTS.md` mentions the new `merge-pr` step in the workflow.
 - [ ] AC-008: awk extraction test: creating a throwaway CHANGELOG with `## [1.2.3]` and running `awk -v v=1.2.3 '$0 ~ "^## \\[" v "\\]" {found=1; next} found && /^## \[/ {exit} found {print}'` returns exactly the section body.
-- [ ] AC-009: version-validation regex tests: `0.3.0` passes, `v0.3.0` fails, `0.3` fails, `0.3.0-beta` fails. (Automated test script committed under `specs/fixtures/` or inline in the command's test block.)
+- [ ] AC-009: version-validation regex tests: `0.3.0` passes, `v0.3.0` fails, `0.3` fails, `0.3.0-beta` fails.
+- [ ] AC-010: awk extraction on a CHANGELOG fixture where a `[X.Y.Z]` section contains the literal string `"## ["` inside a code fence returns ALL bytes of that section unchanged (byte-for-byte verification via `cmp`), does NOT stop at the fake boundary.
+- [ ] AC-011: structural heading match: given version `1.2.3`, the extractor does NOT match `## [1x2y3]` even though `.` is a regex wildcard.
+- [ ] AC-012: heading-only section rejection: a section containing only `### Added` (no bullet) is rejected by the workflow's empty-section check.
+- [ ] AC-013: `--dry-run` end-to-end: after running the command with `--dry-run` on a disposable branch, `git status` on the PR branch is clean (no release commit), `git log` shows no new commit, `git ls-remote origin` has no new tag, and the local `CHANGELOG.md` is byte-identical to the pre-run version.
+- [ ] AC-014: tag points to merge SHA: after a real merge, `git rev-list v<NEXT>` matches the merge commit SHA recorded from `gh pr merge`, not `main`'s current HEAD.
 
 ## Constraints
 
