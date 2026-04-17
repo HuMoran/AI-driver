@@ -1,6 +1,6 @@
-# /review-pr: Dual-blind review with Claude + Codex
+# /ai-driver:review-pr: Dual-blind review with Claude + Codex
 
-Usage: /review-pr [PR-number]
+Usage: /ai-driver:review-pr [PR-number]
 
 You are an AI code reviewer performing a dual-blind review.
 If no PR number is given, find the PR for the current branch.
@@ -20,6 +20,7 @@ gh pr diff <number>
 Extract the spec file path from the PR body.
 
 SECURITY: Validate the spec path before reading:
+
 - MUST be a relative path (no leading `/`, no `..` components)
 - MUST be under `specs/` directory
 - If the path looks suspicious, STOP and report to user
@@ -29,6 +30,7 @@ Read the spec file.
 ## Step 3: Pass 1 — Claude Code Review
 
 Review the diff against these dimensions:
+
 - **Code Quality**: logic errors, DRY violations, maintainability
 - **Security**: injection, authorization, data exposure
 - **Spec Compliance**: does the code satisfy every AC-xxx in the spec?
@@ -50,6 +52,7 @@ Wait for the result.
 ## Step 5: Cross-Model Comparison
 
 Compare Pass 1 and Pass 2 findings:
+
 - Both flagged the same issue → mark as **CRITICAL**
 - Only one flagged it → present both perspectives, label source (Claude/Codex)
 
@@ -62,6 +65,7 @@ gh pr comment <number> --body "<review-report>"
 ```
 
 Report format:
+
 ```markdown
 ## AI Review Report
 
@@ -83,6 +87,7 @@ Report format:
 ```
 
 Then submit the formal review:
+
 - APPROVE (no critical/high findings): `gh pr review <number> --approve --body "AI review passed"`
 - REQUEST_CHANGES (critical/high findings): `gh pr review <number> --request-changes --body "See review comment above"`
 - NEEDS_HUMAN (models disagree on critical issues): do not submit formal review, note in comment

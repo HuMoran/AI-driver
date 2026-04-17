@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  detect-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Detect language and run checks
+        run: |
+          echo "=== Detecting project language ==="
+          DETECTED=false
+
+          if [ -f "Cargo.toml" ]; then
+            echo "Detected: Rust"
+            DETECTED=true
+            rustup update stable
+            cargo fmt -- --check
+            cargo clippy -- -D warnings
+            cargo test
+          fi
+
+          if [ -f "pyproject.toml" ] || [ -f "requirements.txt" ]; then
+            echo "Detected: Python"
+            DETECTED=true
+            pip install ruff pytest
+            [ -f "pyproject.toml" ] && pip install -e ".[dev]" 2>/dev/null || true
+            [ -f "requirements.txt" ] && pip install -r requirements.txt
+            ruff check .
+            ruff format --check .
+            pytest
+          fi
+
+          if [ -f "package.json" ]; then
+            echo "Detected: Node.js/TypeScript"
+            DETECTED=true
+            npm ci
+            if [ -n "$(jq -r '.scripts.lint // empty' package.json 2>/dev/null)" ]; then
+              npm run lint
+            fi
+            if [ -n "$(jq -r '.scripts.test // empty' package.json 2>/dev/null)" ]; then
+              npm test
+            fi
+            if [ -n "$(jq -r '.scripts.build // empty' package.json 2>/dev/null)" ]; then
+              npm run build
+            fi
+          fi
+
+          if [ -f "go.mod" ]; then
+            echo "Detected: Go"
+            DETECTED=true
+            go vet ./...
+            go test ./...
+          fi
+
+          if [ -f "pubspec.yaml" ]; then
+            echo "Detected: Flutter/Dart"
+            DETECTED=true
+            flutter pub get
+            dart analyze
+            flutter test
+          fi
+
+          if [ "$DETECTED" = "false" ]; then
+            echo "No recognized project language detected. Skipping CI checks."
+            echo "Add language-specific config files to enable CI."
+          fi
