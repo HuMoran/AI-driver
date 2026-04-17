@@ -1,9 +1,7 @@
-# p<NN>_<功能名>.spec.md
+# <功能名>.spec.md
 
 ## 元信息
-- ID: p<NN>
-- 状态: draft | in-review | approved | in-progress | done
-- 分支: feat/p<NN>-<功能名> 或 fix/p<NN>-<功能名>
+- 日期: YYYY-MM-DD
 - 对抗审查级别: B
   A = 仅 PR 审查
   B = 计划阶段 + PR 审查（默认）

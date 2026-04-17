@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   - `/deploy` → `/ai-driver:deploy`
 - **Language rules location**: `.claude/rules/` is no longer in user projects. Rules live inside the installed plugin at `${CLAUDE_PLUGIN_ROOT}/rules/`.
 - **Memory**: `CLAUDE.md` now imports `AGENTS.md` via `@AGENTS.md`. This follows the Claude Code convention (Claude Code reads `CLAUDE.md`, not `AGENTS.md`).
+- **Spec Meta block simplified** — removed `ID`, `Status`, `Branch` (redundant with filename/git state). Kept `Date` and `Review Level`. File name now matches the slug directly (e.g., `specs/user-auth.spec.md`, no more `p01_` prefix).
 
 ### Added
 
@@ -30,7 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Unchanged
 
-- Spec format (`specs/<name>.spec.md`, Given/When/Then acceptance criteria).
+- Given/When/Then acceptance criteria format.
 - `constitution.md` principles and operational rules.
 - `deploy/<project>.deploy.md` format.
 - GitHub Actions workflows.
@@ -40,8 +41,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 1. Install the plugin (see above).
 2. Run `/ai-driver:init` in your existing project. Existing files are preserved.
 3. Update any custom scripts that called `/run-spec` etc. to use the `ai-driver:` namespace.
-
-Existing `specs/*.spec.md` files continue to work as-is.
+4. Optional: for old `specs/p01_foo.spec.md` files, rename to `specs/foo.spec.md` and trim the Meta block (the `ID` / `Status` / `Branch` lines can be deleted; keep `Date` and `Review Level`). Existing files still parse if left alone.
 
 ## [Unreleased 0.1 (pre-plugin)]
 

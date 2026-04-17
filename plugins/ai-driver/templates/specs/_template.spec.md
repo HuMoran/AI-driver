@@ -1,9 +1,7 @@
-# p<NN>_<feature-name>.spec.md
+# <feature-name>.spec.md
 
 ## Meta
-- ID: p<NN>
-- Status: draft | in-review | approved | in-progress | done
-- Branch: feat/p<NN>-<name> or fix/p<NN>-<name>
+- Date: YYYY-MM-DD
 - Review Level: B
   A = PR review only
   B = Plan + PR review (default)
