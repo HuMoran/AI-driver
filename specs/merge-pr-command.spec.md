@@ -132,7 +132,7 @@ Add `/ai-driver:merge-pr` as the human-gated "ship" step that atomically updates
 Machine-executable checklist:
 
 - [ ] AC-001: `test -f plugins/ai-driver/commands/merge-pr.md` (command file exists)
-- [ ] AC-002: `grep -q '^\-\-version' plugins/ai-driver/commands/merge-pr.md && grep -q '^\-\-bump' plugins/ai-driver/commands/merge-pr.md && grep -q '^\-\-no-release' plugins/ai-driver/commands/merge-pr.md` (flags documented)
+- [ ] AC-002: all three flags are documented in the command file: `for f in -- --version --bump --no-release; do [ "$f" = "--" ] && continue; grep -q -- "$f" plugins/ai-driver/commands/merge-pr.md || exit 1; done`
 - [ ] AC-003: `.github/workflows/auto-release.yml` triggers on `push.tags`, NOT on `push.branches`. Verify: `grep -E '^\s+tags:' .github/workflows/auto-release.yml`
 - [ ] AC-004: `plugins/ai-driver/templates/.github/workflows/auto-release.yml` has the same tag-triggered shape (template stays in sync).
 - [ ] AC-005: `README.md` + `README.zh-CN.md` document `/ai-driver:merge-pr` in the Commands table.

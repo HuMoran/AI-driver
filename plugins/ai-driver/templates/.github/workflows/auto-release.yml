@@ -2,7 +2,7 @@ name: Auto Release
 
 on:
   push:
-    branches: [main]
+    tags: ['v*.*.*']
 
 permissions:
   contents: write
@@ -15,89 +15,29 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Check for releasable commits
-        id: check
+      - name: Extract CHANGELOG section
+        id: notes
         run: |
-          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
-          if [ -z "$LAST_TAG" ]; then
-            COMMITS=$(git log --oneline --format="%s")
-          else
-            COMMITS=$(git log ${LAST_TAG}..HEAD --oneline --format="%s")
+          VER="${GITHUB_REF_NAME#v}"
+          BODY=$(awk -v v="$VER" '
+            $0 ~ "^## \\[" v "\\]" { found=1; next }
+            found && /^## \[/ { exit }
+            found { print }
+          ' CHANGELOG.md)
+          if [ -z "$(printf '%s' "$BODY" | tr -d '[:space:]')" ]; then
+            echo "::error::CHANGELOG.md has no non-empty section for $VER"
+            exit 1
           fi
-
-          HAS_FEAT=$(echo "$COMMITS" | grep -c "^feat" || true)
-          HAS_FIX=$(echo "$COMMITS" | grep -c "^fix" || true)
-          HAS_BREAKING=$(echo "$COMMITS" | grep -c "BREAKING CHANGE" || true)
-
-          if [ "$HAS_FEAT" -gt 0 ] || [ "$HAS_FIX" -gt 0 ] || [ "$HAS_BREAKING" -gt 0 ]; then
-            echo "should_release=true" >> $GITHUB_OUTPUT
-          else
-            echo "should_release=false" >> $GITHUB_OUTPUT
-          fi
-
-          echo "has_feat=$HAS_FEAT" >> $GITHUB_OUTPUT
-          echo "has_fix=$HAS_FIX" >> $GITHUB_OUTPUT
-          echo "has_breaking=$HAS_BREAKING" >> $GITHUB_OUTPUT
-
-      - name: Calculate next version
-        if: steps.check.outputs.should_release == 'true'
-        id: version
-        run: |
-          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
-          VERSION=${LAST_TAG#v}
-          IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
-
-          if [ "${{ steps.check.outputs.has_breaking }}" -gt 0 ]; then
-            MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0
-          elif [ "${{ steps.check.outputs.has_feat }}" -gt 0 ]; then
-            MINOR=$((MINOR + 1)); PATCH=0
-          else
-            PATCH=$((PATCH + 1))
-          fi
-
-          echo "tag=v${MAJOR}.${MINOR}.${PATCH}" >> $GITHUB_OUTPUT
-          echo "version=${MAJOR}.${MINOR}.${PATCH}" >> $GITHUB_OUTPUT
-
-      - name: Generate changelog entry
-        if: steps.check.outputs.should_release == 'true'
-        id: changelog
-        run: |
-          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
-          if [ -z "$LAST_TAG" ]; then
-            RANGE="HEAD"
-          else
-            RANGE="${LAST_TAG}..HEAD"
-          fi
-
           {
             echo "body<<CHANGELOG_EOF"
-            echo "## [${{ steps.version.outputs.version }}] - $(date +%Y-%m-%d)"
-            echo ""
-
-            FEATS=$(git log $RANGE --oneline --format="%s" | grep "^feat" || true)
-            if [ -n "$FEATS" ]; then
-              echo "### Added"
-              echo "$FEATS" | sed 's/^feat[^:]*: /- /'
-              echo ""
-            fi
-
-            FIXES=$(git log $RANGE --oneline --format="%s" | grep "^fix" || true)
-            if [ -n "$FIXES" ]; then
-              echo "### Fixed"
-              echo "$FIXES" | sed 's/^fix[^:]*: /- /'
-              echo ""
-            fi
-
+            printf '%s\n' "$BODY"
             echo "CHANGELOG_EOF"
-          } >> $GITHUB_OUTPUT
+          } >> "$GITHUB_OUTPUT"
 
-      - name: Create tag and release
-        if: steps.check.outputs.should_release == 'true'
+      - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          git tag ${{ steps.version.outputs.tag }}
-          git push origin ${{ steps.version.outputs.tag }}
-          gh release create ${{ steps.version.outputs.tag }} \
-            --title "${{ steps.version.outputs.tag }}" \
-            --notes "${{ steps.changelog.outputs.body }}"
+          gh release create "$GITHUB_REF_NAME" \
+            --title "$GITHUB_REF_NAME" \
+            --notes "${{ steps.notes.outputs.body }}"

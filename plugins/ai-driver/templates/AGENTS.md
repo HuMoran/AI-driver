@@ -10,10 +10,12 @@ The constitution defines all principles (P1-P6) and operational rules (R-001 to 
 1. Human writes `specs/<name>.spec.md` (template at `specs/_template.spec.md`)
 2. `/ai-driver:run-spec <spec-path>` — AI plan + implement + test → PR
 3. `/ai-driver:review-pr` — Claude + Codex dual-blind review
-4. merge → auto tag + release (via `.github/workflows/auto-release.yml`)
+4. `/ai-driver:merge-pr` — rewrite CHANGELOG (`[Unreleased]` → `[X.Y.Z]`), merge PR, tag; `.github/workflows/auto-release.yml` picks up the tag and creates a GitHub Release from the matching CHANGELOG section
 5. Optional: `/ai-driver:deploy staging|production` (requires `deploy/<project>.deploy.md`)
 6. Human tests → files GitHub Issue (label: `ai-fix`)
 7. `/ai-driver:fix-issues` — AI reads issue → fix → PR
+
+While the PR is open, keep `CHANGELOG.md`'s `## [Unreleased]` section up to date (`### Added / ### Fixed / ### Changed` entries) so `/ai-driver:merge-pr` can convert it into the release block at merge time.
 
 ## Key Files
 - `constitution.md` — project constitution, rules AI must follow
