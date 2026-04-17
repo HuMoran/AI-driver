@@ -5,19 +5,26 @@
   },
   "metadata": {
     "description": "Language-agnostic AI-driven development framework. Humans write specs, AI does the rest.",
-    "version": "0.3.0"
+    "version": "0.3.1"
   },
   "plugins": [
     {
       "name": "ai-driver",
       "source": "./plugins/ai-driver",
       "description": "Claude Code plugin for the AI-driver framework",
-      "version": "0.3.0",
-      "author": { "name": "HuMoran" },
+      "version": "0.3.1",
+      "author": {
+        "name": "HuMoran"
+      },
       "homepage": "https://github.com/HuMoran/AI-driver",
       "repository": "https://github.com/HuMoran/AI-driver",
       "license": "MIT",
-      "keywords": ["ai", "spec-driven-development", "claude-code", "codex"],
+      "keywords": [
+        "ai",
+        "spec-driven-development",
+        "claude-code",
+        "codex"
+      ],
       "category": "productivity"
     }
   ]
