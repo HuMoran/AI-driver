@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-04-17
+
 ### Added
 
 - `/ai-driver:merge-pr` — ship command that rewrites `CHANGELOG.md` (`[Unreleased]` → `[X.Y.Z]`), commits, merges the PR, tags `main`, and pushes the tag. Supports `--version X.Y.Z`, `--bump major|minor|patch`, `--no-release`, `--squash`, `--no-check`, and `--dry-run`. See `plugins/ai-driver/commands/merge-pr.md`.
