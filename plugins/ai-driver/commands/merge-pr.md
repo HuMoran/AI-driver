@@ -41,6 +41,7 @@ Run all of the following. Any failure aborts with a one-line message. Nothing is
    - If `--version X.Y.Z`: semver-compare against `LAST_TAG`. Not strictly greater → abort: `"--version X.Y.Z is not greater than current latest tag $LAST_TAG"`.
    - Existing tag: `git rev-parse -q --verify "refs/tags/v$X.Y.Z" > /dev/null` → abort: `"tag v$X.Y.Z already exists"`.
 8. **Working tree clean** on the current branch.
+8a. **Validate plugin manifests (if present).** For each of `./.claude-plugin/marketplace.json` and `./.claude-plugin/plugin.json`: if the file exists, run `jq -e . <file> >/dev/null`. If parse fails → abort: `"ERROR: <file> is not valid JSON. Fix it and rerun."`. If the file does not exist, skip silently (non-plugin projects are fine).
 9. **Determine next version** (skip if `--no-release`) — first matching rule:
    - `--version X.Y.Z` → `NEXT=X.Y.Z`.
    - `--bump major|minor|patch` → bump corresponding field of `LAST_TAG`, zero lower fields.
@@ -71,6 +72,10 @@ CHANGELOG.md rewrite:
   <empty>
   ## [<NEXT>] - <today>
   <current body>
+Manifest bumps (if applicable):
+  .claude-plugin/marketplace.json: metadata.version <OLD> -> <NEXT>
+                                   plugins[*].version  <OLD> -> <NEXT>   (conservative: only entries matching metadata.version)
+  .claude-plugin/plugin.json:      version <OLD> -> <NEXT>   (only if .version already present)
 Planned commands:
   git commit -m "chore(release): v<NEXT>"
   git push origin <branch>
@@ -81,7 +86,9 @@ Planned commands:
 
 Exit 0. The real `CHANGELOG.md` is untouched: all rewriting in Step 2 happens in-memory / to a tempfile only.
 
-## Step 2: Rewrite CHANGELOG.md (skip if `--no-release`)
+## Step 2: Rewrite CHANGELOG.md + bump plugin manifests (skip if `--no-release`)
+
+### 2a. CHANGELOG.md
 
 ```bash
 DATE=$(date +%Y-%m-%d)
@@ -97,7 +104,50 @@ awk -v ver="$NEXT" -v date="$DATE" '
 ' CHANGELOG.md > CHANGELOG.md.new && mv CHANGELOG.md.new CHANGELOG.md
 ```
 
-`git add CHANGELOG.md`.
+### 2b. `.claude-plugin/marketplace.json` (if present)
+
+For projects that publish a Claude Code plugin, keep the marketplace manifest in sync — without this, `claude plugin update` cannot detect the new version.
+
+```bash
+MP=./.claude-plugin/marketplace.json
+if [ -f "$MP" ]; then
+  META_VER=$(jq -r '.metadata.version // empty' "$MP")
+  NEW=$(jq --arg next "$NEXT" --arg meta "$META_VER" '
+    # Bump metadata.version if present
+    (if .metadata and (.metadata | has("version")) then .metadata.version = $next else . end)
+    # Bump plugins[].version conservatively:
+    #   - if there is exactly one plugin entry, bump it
+    #   - otherwise only entries whose current version equals pre-bump metadata.version
+    | (if (.plugins | length) == 1
+         then .plugins[0].version = (if .plugins[0] | has("version") then $next else .plugins[0].version end)
+         else .plugins |= map(
+                if (has("version") and .version == $meta) then .version = $next else . end
+              )
+       end)
+  ' "$MP")
+  printf '%s\n' "$NEW" > "$MP"
+fi
+```
+
+### 2c. `.claude-plugin/plugin.json` (if present AND has a version field)
+
+```bash
+PJ=./.claude-plugin/plugin.json
+if [ -f "$PJ" ] && jq -e '.version' "$PJ" >/dev/null 2>&1; then
+  NEW=$(jq --arg next "$NEXT" '.version = $next' "$PJ")
+  printf '%s\n' "$NEW" > "$PJ"
+fi
+```
+
+Do NOT add a `version` key to `plugin.json` if it wasn't already present (keeps the documented "version lives in marketplace entry only" pattern for relative-path plugins valid).
+
+### 2d. Stage changes
+
+```bash
+git add CHANGELOG.md
+[ -f ./.claude-plugin/marketplace.json ] && git add ./.claude-plugin/marketplace.json || true
+[ -f ./.claude-plugin/plugin.json ] && git add ./.claude-plugin/plugin.json || true
+```
 
 ## Step 3: Commit CHANGELOG + push to PR branch (skip if `--no-release`)
 
