@@ -72,10 +72,14 @@ CHANGELOG.md rewrite:
   <empty>
   ## [<NEXT>] - <today>
   <current body>
-Manifest bumps (if applicable):
-  .claude-plugin/marketplace.json: metadata.version <OLD> -> <NEXT>
-                                   plugins[*].version  <OLD> -> <NEXT>   (conservative: only entries matching metadata.version)
-  .claude-plugin/plugin.json:      version <OLD> -> <NEXT>   (only if .version already present)
+Manifest bumps (actual unified diff):
+  For .claude-plugin/marketplace.json and .claude-plugin/plugin.json:
+  1. Apply the same jq filters from Steps 2b / 2c to a tempfile.
+  2. Print `diff -u <original> <tempfile>`.
+  3. Delete tempfile. Do NOT touch the real manifest.
+  If a manifest is absent, print "<path>: (skipped — file not present)".
+  If a plugin.json is present but version field is absent, print:
+  "<path>: (skipped — no existing .version field to bump)".
 Planned commands:
   git commit -m "chore(release): v<NEXT>"
   git push origin <branch>
@@ -113,17 +117,21 @@ MP=./.claude-plugin/marketplace.json
 if [ -f "$MP" ]; then
   META_VER=$(jq -r '.metadata.version // empty' "$MP")
   NEW=$(jq --arg next "$NEXT" --arg meta "$META_VER" '
-    # Bump metadata.version if present
-    (if .metadata and (.metadata | has("version")) then .metadata.version = $next else . end)
-    # Bump plugins[].version conservatively:
-    #   - if there is exactly one plugin entry, bump it
-    #   - otherwise only entries whose current version equals pre-bump metadata.version
-    | (if (.plugins | length) == 1
-         then .plugins[0].version = (if .plugins[0] | has("version") then $next else .plugins[0].version end)
-         else .plugins |= map(
-                if (has("version") and .version == $meta) then .version = $next else . end
-              )
-       end)
+    # 1) Bump metadata.version ONLY if it was already present — no key injection.
+    (if (.metadata? // {}) | has("version") then .metadata.version = $next else . end)
+    # 2) Bump plugins[].version ONLY if .plugins is an array (null/missing is fine).
+    | (if (.plugins | type) == "array" then
+         (if (.plugins | length) == 1 then
+            # Single entry: bump only if key already present (no null injection).
+            (if (.plugins[0] | has("version")) then .plugins[0].version = $next else . end)
+          else
+            # Multi-entry: conservatively only bump entries whose current version
+            # equals the pre-bump metadata.version. Leave others alone.
+            .plugins |= map(
+              if (has("version") and .version == $meta) then .version = $next else . end
+            )
+          end)
+       else . end)
   ' "$MP")
   printf '%s\n' "$NEW" > "$MP"
 fi
