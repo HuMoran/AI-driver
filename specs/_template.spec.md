@@ -8,11 +8,8 @@
   C = Review every step
 
 ## Goal
-One or two sentences. What changes when this is done.
+1-3 sentences: what changes when this is done, and why it is needed now.
 Write WHAT and WHY only. Do not write HOW.
-
-## Context
-Why is this needed? Motivation, related issues, user feedback, etc.
 
 ## User Scenarios
 
