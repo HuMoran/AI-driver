@@ -27,7 +27,7 @@
 /ai-driver:init --with-ci --with-deploy --with-codex
 ```
 
-这会把 `constitution.md`、`AGENTS.md`、`specs/_template.spec.md`、CI workflows 和部署模板铺到你的项目里。`CLAUDE.md` 会被创建（或追加）以导入 `AGENTS.md`。**已存在的文件不会被覆盖**，除非带 `--force`。
+这会把 `constitution.md`、`AGENTS.md`、`specs/_template.spec.md`、CI workflows 和部署模板铺到你的项目里。`CLAUDE.md` 会被创建（若已存在则把 `@AGENTS.md` **前置**到文件顶部，让后面的 Claude 专属说明能覆盖导入）。**已存在的文件不会被覆盖**，除非带 `--force`。
 
 ### 使用
 

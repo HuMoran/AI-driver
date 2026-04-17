@@ -27,7 +27,7 @@ Then, in the project you want to drive with AI-driver:
 /ai-driver:init --with-ci --with-deploy --with-codex
 ```
 
-This copies `constitution.md`, `AGENTS.md`, `specs/_template.spec.md`, CI workflows, and deploy templates into your project. `CLAUDE.md` is created (or appended) to import `AGENTS.md`. Existing files are never overwritten without `--force`.
+This copies `constitution.md`, `AGENTS.md`, `specs/_template.spec.md`, CI workflows, and deploy templates into your project. `CLAUDE.md` is created (or `@AGENTS.md` is **prepended** if it already exists, so Claude-specific notes after the import can override it). Existing files are never overwritten without `--force`.
 
 ### Usage
 

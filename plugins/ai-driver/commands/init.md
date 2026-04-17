@@ -134,7 +134,11 @@ Use whichever source (upstream, fork, or internal mirror) you want the team to u
 
 ## Error handling
 
-Any fatal error from Step 1 preflight halts execution before any write. After Step 1, the only other failure-prone operation is the settings.json merge in Step 6, which writes via temp-file + rename so the original is only replaced on success.
+Any fatal error in Step 1 preflight halts execution **before any write**.
+
+After Step 1, the file copies in Steps 2 / 3 / 5 are not transactional across files — if a copy fails mid-flight (e.g., disk full, denied permission on a parent directory), some templates may have landed while others did not. This is recoverable: `/ai-driver:init` is **idempotent for missing files** — re-running it will `SKIP` whatever already landed and `CREATE` what's still missing, with no data loss.
+
+The Step 6 `settings.json` merge always writes via temp-file + rename, so the original file is only replaced on success.
 
 ## Out of scope
 

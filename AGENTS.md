@@ -23,7 +23,7 @@ When developing AI-driver itself, obey `constitution.md` (P1–P6 + R-001 to R-0
 ## Key workflows
 
 - Ship v0.2 → v0.3: run `/ai-driver:run-spec` on a spec in `specs/`. That's the plugin developing itself.
-- Update templates: edit `plugins/ai-driver/templates/*` and bump version in both `marketplace.json` and `plugins/ai-driver/.claude-plugin/plugin.json` (one place only — see `docs/research/2026-04-17-plugin-interface.md`).
+- Update templates: edit `plugins/ai-driver/templates/*` and bump the version in **exactly one place**. For our relative-path plugin, bump it in `.claude-plugin/marketplace.json` (the entry's `version` field) and leave `plugins/ai-driver/.claude-plugin/plugin.json` without a `version` field. See `docs/research/2026-04-17-plugin-interface.md` §3 for why double-writing causes silent shadowing.
 
 ## Local test install
 
