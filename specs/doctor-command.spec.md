@@ -53,7 +53,7 @@ Add `/ai-driver:doctor` — a read-only health check for a project that uses AI-
 
 1. **Given** `./constitution.md` differs from `${CLAUDE_PLUGIN_ROOT}/templates/constitution.md`,
    **When** doctor runs,
-   **Then** it prints `[⚠] constitution.md — drifted from plugin template v<X.Y.Z>` with the first 10 lines of the unified diff, and suggests: `diff constitution.md \${CLAUDE_PLUGIN_ROOT}/templates/constitution.md | less`.
+   **Then** it prints `[⚠] constitution.md — drifted from plugin template v<X.Y.Z>` with the first 10 lines of the unified diff, and suggests: `diff -u constitution.md \${CLAUDE_PLUGIN_ROOT}/templates/constitution.md`.
 
 2. **Given** `./constitution.md` is byte-identical to the template,
    **When** doctor runs,
@@ -107,7 +107,7 @@ Add `/ai-driver:doctor` — a read-only health check for a project that uses AI-
 ## Acceptance Criteria
 
 - [ ] AC-001: `plugins/ai-driver/commands/doctor.md` exists and follows the documented command format.
-- [ ] AC-002: Doctor is a pure-read command — frontmatter `allowed-tools` excludes `Write`, `Edit`, `Bash(rm:*)`, `Bash(git commit:*)`, `Bash(git push:*)`, `Bash(gh:*)`. Only `Read`, `Glob`, `Grep`, `Bash(git status:*)`, `Bash(git log:*)`, `Bash(jq:*)`, `Bash(diff:*)`, `Bash(cmp:*)`, `Bash(find:*)` are allowed.
+- [ ] AC-002: Doctor is a pure-read command — frontmatter `allowed-tools` is exactly: `Read, Glob, Grep, Bash(git status:*), Bash(git log:*), Bash(jq:*), Bash(diff:*), Bash(cmp:*), Bash(find:*)`. No `Write`, no `Edit`, no generic `Bash(*)`, no `Bash(cat:*)` (cat with redirection is a write primitive), no `Bash(rm:*)`, `Bash(git commit:*)`, `Bash(git push:*)`, `Bash(gh:*)`.
 - [ ] AC-003: Running doctor in a fresh `/ai-driver:init`-ed scratch dir prints `Summary: 0 errors, 0 warnings`.
 - [ ] AC-004: Running doctor on a fixture where CLAUDE.md is missing `@AGENTS.md` prints the documented `[✗]` message and the summary line shows `>= 1 errors`.
 - [ ] AC-005: Running doctor on a fixture where CLAUDE.md imports `@AGENTS.md` but NOT at the top prints a `[⚠]` warning with the correct remediation.
