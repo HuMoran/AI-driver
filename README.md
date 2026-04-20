@@ -57,7 +57,8 @@ cp specs/_template.spec.md specs/my-feature.spec.md
 | Command                         | Purpose                                                   |
 | ------------------------------- | --------------------------------------------------------- |
 | `/ai-driver:init`               | Scaffold AI-driver files into the current project         |
-| `/ai-driver:run-spec <file>`    | Execute a spec end-to-end: plan, implement, test, PR      |
+| `/ai-driver:run-spec <file>`    | Execute a spec end-to-end: **Phase 0 spec review** → plan → implement → test → PR |
+| `/ai-driver:review-spec <file>` | Standalone three-layer spec review (mechanical + Claude + Codex); iterate on a draft before cutting a branch |
 | `/ai-driver:review-pr [number]` | Dual-blind PR review (Claude + Codex); reads all existing reviews/comments (incl. Copilot) |
 | `/ai-driver:merge-pr [number]`  | Merge PR, update CHANGELOG, tag, trigger release          |
 | `/ai-driver:doctor`             | Read-only health check — detects drift and misconfiguration |
@@ -74,6 +75,7 @@ AI-driver commands do **not** hard-code a model or effort level — you stay in 
 | Command                 | Suggested session setting                                       |
 | ----------------------- | --------------------------------------------------------------- |
 | `/ai-driver:run-spec`   | Opus + `xhigh` effort (multi-step planning, TDD, orchestration) |
+| `/ai-driver:review-spec`| Opus + `xhigh` effort (adversarial reading of the spec) |
 | `/ai-driver:review-pr`  | Opus + `xhigh` effort (adversarial deep-read of the diff)       |
 | `/ai-driver:merge-pr`   | Sonnet or session default (deterministic: rewrite CHANGELOG, merge, tag) |
 | `/ai-driver:doctor`     | Haiku or session default (pure read-only — file checks + diff) |
@@ -120,14 +122,23 @@ Commands and language rules live inside the installed plugin, not in your projec
 ## Workflow
 
 ```txt
-Human writes spec → /ai-driver:run-spec → AI plan+code+test → PR
-                                                              ↓
-              /ai-driver:review-pr → Claude+Codex review → merge
-                                                              ↓
-                           GitHub Actions → tag + release
-                                                              ↓
+Human writes spec → /ai-driver:run-spec
+                         ↓
+            Phase 0: spec review  (Layer 0 grep + Claude + Codex)   ← gate 1/3
+                         ↓
+            Phase 1: plan review  (Codex adversarial on plan)       ← gate 2/3
+                         ↓
+                  AI code + test → PR
+                         ↓
+                  /ai-driver:review-pr                               ← gate 3/3
+                  (Claude + Codex + existing reviewer consensus)
+                         ↓
+                  /ai-driver:merge-pr → GitHub Actions → tag + release
+                         ↓
        Human tests → issue → /ai-driver:fix-issues → PR → ...
 ```
+
+The three-gate pipeline (v0.3.6+) catches defects at the cheapest stage: spec before plan, plan before code, code before merge. Each gate runs Claude (in-session) + Codex (external) with dual-consensus severity upgrades. Standalone `/ai-driver:review-spec` lets you pre-flight a draft spec without cutting a branch.
 
 ## Standards
 
