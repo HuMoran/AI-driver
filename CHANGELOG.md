@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **Injection-fixture library** at `tests/injection-fixtures/` — five documented realistic malicious payloads (`changelog-prompt-injection`, `review-body-approval-hijack`, `spec-filename-shell-metachar`, `fake-self-id-marker`, `bot-authored-spec-without-flag`) covering prompt-injection-via-data, review-hijack, shell-metachar, self-ID spoof, and bot-authored-destructive-action classes. Each fixture has five-key frontmatter (`name`, `attack-class`, `target-command`, `mitigation`, `safety-note`) plus a `rule-anchor` pointing to its matching lint rule. Fixtures are **inert test data**; they cannot be accidentally loaded as specs because `/ai-driver:run-spec` now has a Pre-flight path gate refusing paths outside `specs/`, and Phase 0 S-META rejects their frontmatter format.
+- **Static injection-lint** at `.github/scripts/injection-lint.sh` + `.github/workflows/injection-lint.yml` — five mechanical rules (`L-TRUST`, `L-QUOTE`, `L-SELF-ID`, `L-BOT`, `L-EXTRACT`) that block known injection-class regressions in command docs and release workflows. 1:1 mapping to the fixture library. Failure output follows the contract `rule-id=<ID> <file:line> fix: <hint> #<ID>` where the trailing anchor links directly into `docs/security/injection-threat-model.md`.
+- **Regression harness** at `tests/injection-lint-cases/run.sh` + five `.patch` files — applies each anti-pattern to a clean tree, runs the lint, asserts non-zero exit + the matching rule-id in stderr, reverts. CI runs the harness after the main lint so a rule that stops catching its own anti-pattern is itself caught. `assert-format.sh` additionally verifies MUST-003 output format (rule-id + file:line + fix: + threat-model anchor).
+- **Threat model doc** at `docs/security/injection-threat-model.md` — enumerates every in-scope class with mitigation anchors, and an explicit "Out of scope" section (compromised dev machine, malicious plugin author, hostile MCP server, supply-chain, live-model bypass).
+- **Pre-flight path gate** in `/ai-driver:run-spec` and `/ai-driver:review-spec`: `$ARGUMENTS` must start with `specs/` and end with `.spec.md`. Closes the fixture-mistakenly-loaded-as-spec attack class mechanically instead of relying on the fixture's `safety-note` frontmatter (which is documentation, not a boundary).
+- **Trust boundary section** added to `/ai-driver:fix-issues` (had been missing since v0.3.4); the lint `L-TRUST` rule now greps all three untrusted-data-consuming commands consistently.
+
+### Scope note
+
+The injection-lint artifacts are **repo-internal hardening** for the plugin source. They are NOT shipped to user projects via `plugins/ai-driver/templates/`. User projects have a different attack surface and do not have `plugins/ai-driver/commands/*.md` or `tests/injection-fixtures/` to reference.
+
 ## [0.3.6] - 2026-04-20
 
 ### Added
