@@ -70,6 +70,16 @@ Every task must report one of:
 - NEEDS_CONTEXT: missing information, need human input
 - BLOCKED: stuck, need human intervention
 
+### R-008: Spec Input Review (from P1, P4)
+Every `spec.md`, whether human-written or AI-generated, MUST pass Phase 0 spec review
+(Layer 0 mechanical + Layer 1 Claude + Layer 2 Codex) before `/ai-driver:run-spec`
+proceeds to Phase 1. Spec review is unconditional — NOT gated by the `Review Level`
+field in Meta.
+Rationale: Spec is requirement input. A defective spec cascades into wasted
+implementation. Input gating is strictly cheaper than downstream correction.
+Enforcement: `/ai-driver:run-spec` exits 2 on any Critical finding. High findings
+require explicit `--accept-high` flag with rationale logged.
+
 ## Standards
 
 - Changelog: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
