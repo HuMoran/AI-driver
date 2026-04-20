@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.3.5] - 2026-04-20
+
 ### Fixed
 
 - `/ai-driver:run-spec` now derives a spec slug from the filename (`specs/user-auth.spec.md` → `user-auth`) and uses it consistently for `logs/<slug>/`. Default branch uses a separate `<branch-slug>` — `<spec-slug>` normalized to a git-ref-safe form (lowercase, non-`[a-z0-9.-]` replaced with `-`) — so spec filenames with spaces or unusual characters still produce valid branch names. PR-body "Spec" link uses the actual `$ARGUMENTS` path verbatim (not reconstructed from slug) so nested dirs round-trip. Removed all references to v0.1-era `Meta.ID` / `Meta.Branch`. Closes Copilot findings on PR #1; cross-reviewer round-1 on PR #7 caught the branch-safety gap.
