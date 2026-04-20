@@ -28,7 +28,9 @@ fi
 
 git apply "$PATCH" || { echo "ERROR: patch did not apply" >&2; exit 1; }
 errout=$(bash "$REPO/.github/scripts/injection-lint.sh" 2>&1 >/dev/null)
-# Trap handles the revert on exit.
+# Revert explicitly via `git apply -R` (also removes any files patch added);
+# the trap is a safety net in case this line is skipped.
+git apply -R "$PATCH" 2>/dev/null || git checkout -- . 2>/dev/null
 
 fail=0
 for tok in "rule-id=$RULE" "fix:" "#$RULE"; do

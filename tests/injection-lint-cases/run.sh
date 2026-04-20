@@ -45,8 +45,9 @@ for patch in "$HERE"/*.patch; do
   errout=$(bash "$REPO/.github/scripts/injection-lint.sh" 2>&1 >/dev/null)
   rc=$?
 
-  # Revert the patch regardless of lint outcome.
-  git checkout -- . 2>/dev/null
+  # Revert via `git apply -R` so we also remove any files a patch added
+  # (git checkout -- . only reverts modifications to tracked files).
+  git apply -R "$patch" 2>/dev/null || git checkout -- . 2>/dev/null
 
   if [ "$rc" -eq 0 ]; then
     echo "  FAIL: lint exited 0 with $rule anti-pattern introduced — rule is not catching its regression" >&2

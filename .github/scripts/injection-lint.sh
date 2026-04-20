@@ -58,15 +58,16 @@ for f in "${L_QUOTE_CMDS[@]}"; do
   # Scan only inside ```bash ... ``` fences. Use process substitution so
   # the `emit` side-effects hit this shell's `fail`, not a subshell's.
   while IFS=$'\t' read -r _ path lineno content; do
-    emit L-QUOTE "$path:$lineno" "double-quote or \${} the untrusted variable in: $(echo "$content" | head -c 120)"
+    emit L-QUOTE "$path:$lineno" "double-quote the untrusted variable (both bare \$VAR and unquoted \${VAR} are unsafe) in: $(echo "$content" | head -c 120)"
   done < <(awk -v vars="$VARS" -v file="$f" '
     /^```bash$/ {in_fence=1; next}
     /^```$/ {in_fence=0; next}
     in_fence {
       line=$0
+      # Only exempt quoted spans. A bare ${VAR} is still unsafe — dropping it
+      # would let `echo ${PR_TITLE}` slip through silently.
       gsub(/"[^"]*"/, "", line)
-      gsub(/\$\{[^}]+\}/, "", line)
-      if (match(line, "\\$(" vars ")([^A-Za-z0-9_]|$)")) {
+      if (match(line, "\\$\\{?(" vars ")\\}?([^A-Za-z0-9_]|$)")) {
         printf "FOUND\t%s\t%d\t%s\n", file, NR, $0
       }
     }
