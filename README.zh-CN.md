@@ -54,16 +54,17 @@ cp specs/_template.spec.md specs/my-feature.spec.md
 
 ## 命令一览
 
-| 命令                          | 作用                                     |
-| ----------------------------- | ---------------------------------------- |
-| `/ai-driver:init`             | 把 AI-driver 文件铺到当前项目            |
-| `/ai-driver:run-spec <文件>`  | 端到端执行 spec：规划、实现、测试、提 PR |
-| `/ai-driver:review-pr [编号]` | Claude + Codex 双盲 PR 审查；读取全部已有 review/评论（含 Copilot） |
-| `/ai-driver:merge-pr [编号]`  | 合并 PR、更新 CHANGELOG、打 tag、触发发版 |
-| `/ai-driver:doctor`           | 只读健康检查 —— 探测漂移和误配置        |
-| `/ai-driver:fix-issues`       | 批量修复带 `ai-fix` 标签的 GitHub issue；读取完整 issue 线程含 bot 诊断 |
-| `/ai-driver:run-tests`        | 自动识别并运行项目测试                   |
-| `/ai-driver:deploy <环境>`    | 按 `deploy/<project>.deploy.md` 执行部署 |
+| 命令                            | 作用                                     |
+| ------------------------------- | ---------------------------------------- |
+| `/ai-driver:init`               | 把 AI-driver 文件铺到当前项目            |
+| `/ai-driver:run-spec <文件>`    | 端到端执行 spec：**Phase 0 spec 审查** → 规划 → 实现 → 测试 → 提 PR |
+| `/ai-driver:review-spec <文件>` | 独立三层 spec 审查（机械 grep + Claude + Codex）；在切分支前迭代草稿 spec |
+| `/ai-driver:review-pr [编号]`   | Claude + Codex 双盲 PR 审查；读取全部已有 review/评论（含 Copilot） |
+| `/ai-driver:merge-pr [编号]`    | 合并 PR、更新 CHANGELOG、打 tag、触发发版 |
+| `/ai-driver:doctor`             | 只读健康检查 —— 探测漂移和误配置        |
+| `/ai-driver:fix-issues`         | 批量修复带 `ai-fix` 标签的 GitHub issue；读取完整 issue 线程含 bot 诊断 |
+| `/ai-driver:run-tests`          | 自动识别并运行项目测试                   |
+| `/ai-driver:deploy <环境>`      | 按 `deploy/<project>.deploy.md` 执行部署 |
 
 完整命令定义见 [`plugins/ai-driver/commands/`](plugins/ai-driver/commands)。
 
@@ -71,16 +72,17 @@ cp specs/_template.spec.md specs/my-feature.spec.md
 
 AI-driver 命令**不**在 frontmatter 里写死 `model` / `effort`，你自己控制。调用前按需切换：
 
-| 命令                    | 建议会话设置                                       |
-| ----------------------- | -------------------------------------------------- |
-| `/ai-driver:run-spec`   | Opus + `xhigh` effort（多步规划 + TDD + 任务编排） |
-| `/ai-driver:review-pr`  | Opus + `xhigh` effort（对抗性深读 diff）           |
-| `/ai-driver:merge-pr`   | Sonnet 或会话默认（确定性流程：改 CHANGELOG、合并、打 tag） |
-| `/ai-driver:doctor`     | Haiku 或会话默认（纯只读：文件对比 + diff）         |
-| `/ai-driver:fix-issues` | Opus + `xhigh` effort（根因分析）                  |
-| `/ai-driver:run-tests`  | Haiku 或会话默认（跑命令、解析输出）               |
-| `/ai-driver:deploy`     | Sonnet 或会话默认（按部署文档走步骤）              |
-| `/ai-driver:init`       | 会话默认（文件复制 + jq 合并）                     |
+| 命令                     | 建议会话设置                                       |
+| ------------------------ | -------------------------------------------------- |
+| `/ai-driver:run-spec`    | Opus + `xhigh` effort（多步规划 + TDD + 任务编排） |
+| `/ai-driver:review-spec` | Opus + `xhigh` effort（对抗性读 spec）             |
+| `/ai-driver:review-pr`   | Opus + `xhigh` effort（对抗性深读 diff）           |
+| `/ai-driver:merge-pr`    | Sonnet 或会话默认（确定性流程：改 CHANGELOG、合并、打 tag） |
+| `/ai-driver:doctor`      | Haiku 或会话默认（纯只读：文件对比 + diff）         |
+| `/ai-driver:fix-issues`  | Opus + `xhigh` effort（根因分析）                  |
+| `/ai-driver:run-tests`   | Haiku 或会话默认（跑命令、解析输出）               |
+| `/ai-driver:deploy`      | Sonnet 或会话默认（按部署文档走步骤）              |
+| `/ai-driver:init`        | 会话默认（文件复制 + jq 合并）                     |
 
 在 Claude Code 会话里临时切换：
 
@@ -120,14 +122,28 @@ deploy/             — 可选的部署文档
 ## 工作流
 
 ```txt
-人写 spec → /ai-driver:run-spec → AI 计划 + 编码 + 测试 → PR
-                                                        ↓
-          /ai-driver:review-pr → Claude+Codex 审查 → merge
-                                                        ↓
-                     GitHub Actions → tag + release
-                                                        ↓
+人写 spec → /ai-driver:run-spec
+                  ↓
+   Phase 0: spec 审查（Layer 0 grep + Claude + Codex，无条件）    ← 第 1/3 道门
+                  ↓
+   Phase 1: plan 审查（Codex 对抗，仅当 Review Level ≥ B 才跑）    ← 第 2/3 道门（可选）
+                  ↓
+             AI 编码 + 测试 → PR
+                  ↓
+             /ai-driver:review-pr                                  ← 第 3/3 道门
+             （Claude + Codex + 已有 reviewer，三方共识）
+                  ↓
+             /ai-driver:merge-pr → GitHub Actions → tag + release
+                  ↓
         人工测试 → issue → /ai-driver:fix-issues → PR → ...
 ```
+
+三门流水线（v0.3.6+）在最便宜的阶段夹断缺陷：spec 在 plan 之前、plan 在 code 之前、code 在 merge 之前。**三道门的审查方式并不相同：**
+- **第 1 道门**（spec 审查）：Layer 0 机械 grep + Layer 1 Claude 会话内 + Layer 2 Codex 外部；两个 LLM 层共识则升一级严重度。**无条件**执行，不看 `Review Level`。
+- **第 2 道门**（run-spec 里的 plan 审查）：**可选** Codex-only 对抗，只在 spec 的 `Review Level` 为 `B` 或 `C` 时跑。无 Claude 层，也无双共识语义。
+- **第 3 道门**（PR 审查）：Claude Pass 1 + Codex Pass 2 + 摄取已有 reviewer 评论（Copilot/人工/bot），三方共识则升一级严重度。
+
+独立的 `/ai-driver:review-spec` 让你在切分支之前先对草稿 spec 做预检 — 跟第 1 道门同一套 Layer 0 + Layer 1 + Layer 2。
 
 ## 规范遵从
 
