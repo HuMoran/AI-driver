@@ -1,5 +1,5 @@
 diff --git a/plugins/ai-driver/commands/review-pr.md b/plugins/ai-driver/commands/review-pr.md
-index 89a5e6b..b3316e0 100644
+index 8945621..c70602d 100644
 --- a/plugins/ai-driver/commands/review-pr.md
 +++ b/plugins/ai-driver/commands/review-pr.md
 @@ -6,12 +6,6 @@ Performs a dual-blind AI review (Claude + Codex), then cross-validates against a
