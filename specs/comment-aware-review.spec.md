@@ -31,7 +31,7 @@
    **When** review-pr runs,
    **Then** the `Existing reviewer findings` section is omitted (not `(none)` — just absent) to keep the report tidy.
 
-**Independent Test:** use a fixture PR that has a known Copilot comment; run `gh api .../comments` locally and confirm doctor's Step 2 output includes that comment body.
+**Independent Test:** use a fixture PR that has a known Copilot comment; run `gh api .../comments` locally and confirm `/ai-driver:review-pr` Step 2 output includes that comment body.
 
 ### Scenario 2: `/ai-driver:review-pr` dedupes its own previous runs (Priority: P1)
 
@@ -56,7 +56,7 @@
 
 1. **Given** an issue with title `API times out on large payload`, a short body, and 8 follow-up comments adding HAR files, repro steps, and workarounds,
    **When** `/ai-driver:fix-issues` runs on it in Mode B (no spec found in comments),
-   **Then** the generated `specs/fix-issue-<n>.spec.md` cites specific comment excerpts (quoted with `> comment from <author> @ <date>:`) in its Context / Acceptance sections, and the acceptance criteria reference the reproductions from the thread.
+   **Then** the generated `specs/fix-issue-<n>.spec.md` cites specific comment excerpts (quoted with `> Comment from <author> @ <date>:`) in its Context / Acceptance sections, and the acceptance criteria reference the reproductions from the thread.
 
 2. **Given** any issue comment is authored by a bot (`github-actions`, `sentry-io`, `dependabot`, `copilot-*`) and contains structured diagnostic data (stack trace, link to dashboard),
    **When** Mode B extracts context,
@@ -104,7 +104,7 @@
 
 - MUST-001: All `gh api` calls in the new Step 2 use `--paginate` so long comment threads are not silently truncated.
 - MUST-002: The AI review report MUST include the `<!-- ai-driver-review -->` marker as the FIRST line of its posted body (before any human-visible heading) so self-identification is machine-parseable.
-- MUST-003: Bot-author detection uses both `.user.type == "Bot"` AND login suffix `[bot]` because the GitHub API has historically reported both conventions.
+- MUST-003: Bot-author detection treats an author as a bot if `.user.type == "Bot"` **OR** `user.login` ends with the literal suffix `[bot]` (both conventions exist historically; the OR rule catches either).
 
 ### MUST NOT
 

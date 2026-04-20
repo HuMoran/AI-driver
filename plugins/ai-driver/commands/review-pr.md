@@ -61,7 +61,13 @@ The **REST endpoints above return `.user.login` and `.user.type`**, NOT `.author
 
 Bot detection requires `user.type`, which GraphQL does not expose → use the REST path (`gh api`) for the conversation gather. Use GraphQL (`gh pr view`) only for PR metadata (body, title, headRefName).
 
-For each entry captured from REST, record: `user.login`, `user.type` (`User` vs `Bot`), `path`, `line` (or `original_line`), `body`, `state` (reviews only), `created_at`, `in_reply_to_id`.
+For each entry captured from REST, record fields per endpoint (they differ):
+
+- **Reviews** (`/pulls/<n>/reviews`): `user.login`, `user.type`, `body`, `state` (APPROVED/COMMENTED/CHANGES_REQUESTED/DISMISSED), `submitted_at`, `id`. No `path`/`line`.
+- **Inline review comments** (`/pulls/<n>/comments`): `user.login`, `user.type`, `body`, `path`, `line` (or `original_line` if the line was outdated), `created_at`, `in_reply_to_id`.
+- **Issue-style PR comments** (`/issues/<n>/comments`): `user.login`, `user.type`, `body`, `created_at`, `id`. No `path`/`line`.
+
+Use a consistent `timestamp` field in the categorized output by mapping `submitted_at` (reviews) or `created_at` (comments) into one name.
 
 ### Bot-author detection — immutable API identity only
 
@@ -83,7 +89,13 @@ The `<!-- ai-driver-review -->` HTML marker is a **hint**, not proof. A maliciou
 
 If only one holds → the comment stays in the "Existing reviewer findings" section with a label like `(marker-spoof-suspect)` so a human can notice. Never skip solely on marker presence.
 
-**Rate-limit awareness**: if a `gh api` call returns headers with `X-RateLimit-Remaining < 100`, print a soft warning and continue with whatever was fetched. Don't abort.
+**Rate-limit awareness**: `gh api` does not expose response headers by default. To sample the remaining quota, run once separately:
+
+```bash
+REMAINING=$(gh api rate_limit --jq '.resources.core.remaining')
+```
+
+If `$REMAINING < 100`, print a soft warning before doing the three paginated calls and continue. On rate-limit errors during the calls, continue with whatever was fetched. Do not abort.
 
 ### 2c. Categorize
 
@@ -166,8 +178,8 @@ Compose the report. The FIRST line of the body MUST be the self-identification m
 
 | Author | File:Line | Finding (excerpt) | Status |
 |---|---|---|---|
-| copilot-pull-request-reviewer | plugins/ai-driver/commands/init.md:117 | jq merge... | rehashed below |
-| alice | README.md:30 | typo | not addressed in this diff |
+| copilot-pull-request-reviewer | plugins/ai-driver/commands/init.md:117 | jq merge... | rehashed-below |
+| alice | README.md:30 | typo | open |
 
 ### Prior-finding resolution
 
