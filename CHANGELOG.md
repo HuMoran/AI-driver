@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.3.7] - 2026-04-20
+
 ### Added
 
 - **Injection-fixture library** at `tests/injection-fixtures/` — five documented realistic malicious payloads (`changelog-prompt-injection`, `review-body-approval-hijack`, `spec-filename-shell-metachar`, `fake-self-id-marker`, `bot-authored-spec-without-flag`) covering prompt-injection-via-data, review-hijack, shell-metachar, self-ID spoof, and bot-authored-destructive-action classes. Each fixture has five-key frontmatter (`name`, `attack-class`, `target-command`, `mitigation`, `safety-note`) plus a `rule-anchor` pointing to its matching lint rule. Fixtures are **inert test data**; they cannot be accidentally loaded as specs because `/ai-driver:run-spec` now has a Pre-flight path gate refusing paths outside `specs/`, and Phase 0 S-META rejects their frontmatter format.
