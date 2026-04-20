@@ -48,24 +48,22 @@ L_QUOTE_CMDS=(
 VARS='ARGUMENTS|SPEC_PATH|SPEC_SLUG|PR_TITLE|REVIEWER_LOGIN|ISSUE_BODY|COMMENT_BODY|BRANCH_NAME|TAG_NAME'
 for f in "${L_QUOTE_CMDS[@]}"; do
   [ -f "$f" ] || continue
-  # Scan only inside ```bash ... ``` fences.
-  awk -v vars="$VARS" -v file="$f" '
+  # Scan only inside ```bash ... ``` fences. Use process substitution so
+  # the `emit` side-effects hit this shell's `fail`, not a subshell's.
+  while IFS=$'\t' read -r _ path lineno content; do
+    emit L-QUOTE "$path:$lineno" "double-quote or \${} the untrusted variable in: $(echo "$content" | head -c 120)"
+  done < <(awk -v vars="$VARS" -v file="$f" '
     /^```bash$/ {in_fence=1; next}
     /^```$/ {in_fence=0; next}
     in_fence {
       line=$0
-      # Remove quoted spans "..." and ${...} forms before scanning.
       gsub(/"[^"]*"/, "", line)
       gsub(/\$\{[^}]+\}/, "", line)
-      # Allow [...] test expressions where -z "$X" / -n "$X" are idiomatic.
-      # We are looking for bare $VAR occurrences that remain.
       if (match(line, "\\$(" vars ")([^A-Za-z0-9_]|$)")) {
         printf "FOUND\t%s\t%d\t%s\n", file, NR, $0
       }
     }
-  ' "$f" | while IFS=$'\t' read -r _ path lineno content; do
-    emit L-QUOTE "$path:$lineno" "double-quote or \${} the untrusted variable in: $(echo "$content" | head -c 120)"
-  done
+  ' "$f")
 done
 
 # L-SELF-ID — review-pr.md self-ID filter must require BOTH marker AND login check.
