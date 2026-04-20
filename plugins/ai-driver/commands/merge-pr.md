@@ -21,7 +21,7 @@ Rewrites `CHANGELOG.md` (Unreleased → next version block), commits on the PR b
 - `--no-release` — merge only. Do NOT read `[Unreleased]`, do NOT rewrite `CHANGELOG.md`, do NOT tag. Mutually exclusive with `--version` and `--bump`.
 - `--squash` — use `gh pr merge --squash` instead of the default `--merge`.
 - `--no-check` — skip the mergeable + CI checks.
-- `--dry-run` — print the planned actions and exit **before any write, git operation, or network call**.
+- `--dry-run` — print the planned actions and exit **before any write, git mutation, git-remote operation, or network call; local read-only git commands may run during preflight (e.g., `git status`, `git describe --tags`)**.
 
 ## Step 0a: Local preflight (no network, no git-remote calls)
 
@@ -134,7 +134,12 @@ For projects that publish a Claude Code plugin, keep the marketplace manifest in
 MP=./.claude-plugin/marketplace.json
 if [ -f "$MP" ]; then
   META_VER=$(jq -r '.metadata.version // empty' "$MP")
-  NEW=$(jq --arg next "$NEXT" --arg meta "$META_VER" '
+  # Atomic rewrite: only overwrite $MP if jq succeeded. A direct
+  # 'printf ... > "$MP"' would truncate $MP first, then fail, leaving
+  # zero bytes if jq errored on unexpected schema.
+  tmp="${MP}.new.$$"
+  trap 'rm -f "$tmp"' EXIT INT TERM
+  if NEW=$(jq --arg next "$NEXT" --arg meta "$META_VER" '
     # 1) Bump metadata.version ONLY if it was already present — no key injection.
     (if (.metadata? // {}) | has("version") then .metadata.version = $next else . end)
     # 2) Bump plugins[].version ONLY if .plugins is an array (null/missing is fine).
@@ -150,8 +155,22 @@ if [ -f "$MP" ]; then
             )
           end)
        else . end)
-  ' "$MP")
-  printf '%s\n' "$NEW" > "$MP"
+  ' "$MP"); then
+    # Explicit chained checks so a printf or mv failure aborts (don't rely
+    # on an implicit 'set -e' that the surrounding shell may not have).
+    printf '%s\n' "$NEW" > "$tmp" || {
+      echo "ERROR: failed to write $tmp (disk full / permissions?); $MP unchanged." >&2
+      exit 1
+    }
+    mv "$tmp" "$MP" || {
+      echo "ERROR: failed to mv $tmp to $MP (permissions?); $MP unchanged." >&2
+      exit 1
+    }
+  else
+    echo "ERROR: jq failed to transform $MP; file unchanged. Fix the JSON and rerun." >&2
+    exit 1
+  fi
+  trap - EXIT INT TERM
 fi
 ```
 
@@ -160,8 +179,20 @@ fi
 ```bash
 PJ=./.claude-plugin/plugin.json
 if [ -f "$PJ" ] && jq -e '.version' "$PJ" >/dev/null 2>&1; then
-  NEW=$(jq --arg next "$NEXT" '.version = $next' "$PJ")
-  printf '%s\n' "$NEW" > "$PJ"
+  tmp="${PJ}.new.$$"
+  trap 'rm -f "$tmp"' EXIT INT TERM
+  if NEW=$(jq --arg next "$NEXT" '.version = $next' "$PJ"); then
+    printf '%s\n' "$NEW" > "$tmp" || {
+      echo "ERROR: failed to write $tmp; $PJ unchanged." >&2; exit 1;
+    }
+    mv "$tmp" "$PJ" || {
+      echo "ERROR: failed to mv $tmp to $PJ; $PJ unchanged." >&2; exit 1;
+    }
+  else
+    echo "ERROR: jq failed to transform $PJ; file unchanged." >&2
+    exit 1
+  fi
+  trap - EXIT INT TERM
 fi
 ```
 

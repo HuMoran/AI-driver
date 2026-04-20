@@ -15,7 +15,19 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Check tag is strict semver
+        id: semver
+        run: |
+          VER="${GITHUB_REF_NAME#v}"
+          if [[ "$VER" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "is_semver=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_semver=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Skipping non-semver tag $GITHUB_REF_NAME (not X.Y.Z); no release will be created."
+          fi
+
       - name: Extract CHANGELOG section to file
+        if: steps.semver.outputs.is_semver == 'true'
         run: |
           set -euo pipefail
           VER="${GITHUB_REF_NAME#v}"
@@ -73,6 +85,7 @@ jobs:
           head -40 release-notes.md
 
       - name: Create GitHub Release
+        if: steps.semver.outputs.is_semver == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
