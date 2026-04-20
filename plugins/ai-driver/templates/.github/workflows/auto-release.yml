@@ -19,6 +19,12 @@ jobs:
         run: |
           set -euo pipefail
           VER="${GITHUB_REF_NAME#v}"
+          # Skip non-semver tags (pre-release, build-metadata, etc.) — these
+          # don't correspond to a '## [X.Y.Z]' section in CHANGELOG.md.
+          if ! [[ "$VER" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::notice::Skipping non-semver tag $GITHUB_REF_NAME (not X.Y.Z)"
+            exit 0
+          fi
           # Extractor:
           #   - structural heading match (no regex interpolation)
           #   - fenced-code state tracking so '## [' inside ``` does NOT terminate

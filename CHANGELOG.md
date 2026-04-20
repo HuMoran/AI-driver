@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- `/ai-driver:run-spec` now derives a spec slug from the filename (`specs/user-auth.spec.md` → `user-auth`) and uses it consistently for `logs/<slug>/`, the default branch name (`feat/<slug>` or `fix/<slug>`), and the PR body's spec link. Removed all references to the v0.1-era `Meta.ID` / `Meta.Branch` fields (which were deleted from the spec template in v0.2). Closes a Copilot finding on PR #1 that flagged `run-spec.md:13` and `:111` as depending on removed Meta fields.
+- `plugins/ai-driver/templates/.github/workflows/ci.yml` now includes a `subosito/flutter-action@v2` setup step when `pubspec.yaml` is present. Flutter projects using `/ai-driver:init --with-ci` previously failed CI on the first run because `flutter` / `dart` were not installed on `ubuntu-latest`. Copilot flagged this on PR #1.
+- `auto-release.yml` (repo + template) now skips non-semver tags with a `::notice::` log instead of trying to extract a CHANGELOG section that doesn't exist. Pre-release tags like `v0.3.0-beta.1` trigger the workflow but exit cleanly; only strict `X.Y.Z` tags are released. Copilot flagged this on PR #2.
+- `/ai-driver:merge-pr` manifest rewrites (`marketplace.json`, `plugin.json`) are now atomic. A `jq` failure no longer truncates the target file — the rewrite writes to a `.new` tempfile and only `mv`s on success, mirroring the CHANGELOG / `settings.json` pattern. Copilot flagged this on PR #3.
+- `.github/workflows/template-sync.yml` (repo + template) dropped its `paths:` filter. The workflow now runs on every PR — the internal completeness scan is sub-second when nothing has drifted, so always-on is cheap and gives required-status-check setups a definite pass/fail. Previously a PR that didn't touch the filtered paths would silently skip the check; Copilot flagged this on PR #4.
+- `/ai-driver:merge-pr --dry-run` flag description tightened to accurately describe the contract: "before any write, git mutation, git-remote operation, or network call; local read-only git commands may run during preflight". Copilot flagged the prior overclaim on PR #4.
+
 ## [0.3.4] - 2026-04-20
 
 ### Changed

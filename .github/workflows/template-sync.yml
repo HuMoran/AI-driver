@@ -1,17 +1,9 @@
 name: Template Sync
 
 on:
+  # Run on every PR: internal completeness scan is <1s; always-on trigger
+  # gives required-status-check setups a definite pass/fail.
   pull_request:
-    paths:
-      - '.github/workflows/**'
-      - '.codex/**'
-      - 'constitution.md'
-      - 'CLAUDE.md'
-      - 'specs/_template.spec.md'
-      - 'specs/_template.spec.zh-CN.md'
-      - 'deploy/_template.deploy.md'
-      - 'deploy/_template.deploy.zh-CN.md'
-      - 'plugins/ai-driver/templates/**'
 
 jobs:
   check:
