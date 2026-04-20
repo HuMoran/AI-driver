@@ -23,26 +23,22 @@ Rewrites `CHANGELOG.md` (Unreleased → next version block), commits on the PR b
 - `--no-check` — skip the mergeable + CI checks.
 - `--dry-run` — print the planned actions and exit **before any write, git operation, or network call**.
 
-## Step 0: Preflight (pure reads + validation — zero writes)
+## Step 0a: Local preflight (no network, no git-remote calls)
 
-Run all of the following. Any failure aborts with a one-line message. Nothing is written to disk, no network call, no git mutation.
+Everything here is local: flag parsing, file reads, version computation. Works offline / in sandbox.
 
-1. **Resolve PR number.** If `$ARGUMENTS` begins with a number, use it. Otherwise: `gh pr list --head "$(git branch --show-current)" --json number -q '.[0].number'`. Empty → abort: `"No PR found. Pass a PR number or checkout the PR branch first."`. Validate `$PR` matches `^[0-9]+$`.
-2. **Validate flags.** Parse `$ARGUMENTS`. Enforce mutual exclusion:
+1. **Validate flags.** Parse `$ARGUMENTS`. Enforce mutual exclusion:
    - `--version` + `--bump` → abort: `"--version and --bump are mutually exclusive"`
    - `--no-release` + (`--version` or `--bump`) → abort: `"--no-release and --version/--bump are mutually exclusive"`
-3. **`--version` format.** Must match `^[0-9]+\.[0-9]+\.[0-9]+$`. Reject `v0.3.0`, `0.3`, `0.3.0-beta`, etc.
-4. **`--bump` enum.** Must be `major`, `minor`, or `patch`. Any other → abort.
-5. **PR mergeability** (skip if `--no-check`):
-   - `gh pr view <n> --json mergeable --jq .mergeable` must equal `"MERGEABLE"`.
-   - `gh pr checks <n>` — no REQUIRED check in FAILURE state.
-6. **Current tag.** `LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")`.
-7. **Version monotonicity** (skip if `--no-release`):
+2. **`--version` format.** Must match `^[0-9]+\.[0-9]+\.[0-9]+$`. Reject `v0.3.0`, `0.3`, `0.3.0-beta`, etc.
+3. **`--bump` enum.** Must be `major`, `minor`, or `patch`. Any other → abort.
+4. **Current tag.** `LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")` (local repo data only).
+5. **Version monotonicity** (skip if `--no-release`):
    - If `--version X.Y.Z`: semver-compare against `LAST_TAG`. Not strictly greater → abort: `"--version X.Y.Z is not greater than current latest tag $LAST_TAG"`.
    - Existing tag: `git rev-parse -q --verify "refs/tags/v$X.Y.Z" > /dev/null` → abort: `"tag v$X.Y.Z already exists"`.
-8. **Working tree clean** on the current branch.
-8a. **Validate plugin manifests (if present).** For each of `./.claude-plugin/marketplace.json` and `./.claude-plugin/plugin.json`: if the file exists, run `jq -e . <file> >/dev/null`. If parse fails → abort: `"ERROR: <file> is not valid JSON. Fix it and rerun."`. If the file does not exist, skip silently (non-plugin projects are fine).
-9. **Determine next version** (skip if `--no-release`) — first matching rule:
+6. **Working tree clean** on the current branch (`git status --porcelain` local check).
+7. **Validate plugin manifests (if present).** For each of `./.claude-plugin/marketplace.json` and `./.claude-plugin/plugin.json`: if the file exists, run `jq -e . <file> >/dev/null`. If parse fails → abort: `"ERROR: <file> is not valid JSON. Fix it and rerun."`. If the file does not exist, skip silently.
+8. **Determine next version** (skip if `--no-release`) — first matching rule:
    - `--version X.Y.Z` → `NEXT=X.Y.Z`.
    - `--bump major|minor|patch` → bump corresponding field of `LAST_TAG`, zero lower fields.
    - **Auto from `[Unreleased]`:**
@@ -51,17 +47,20 @@ Run all of the following. Any failure aborts with a one-line message. Nothing is
      - Body contains `BREAKING` (case-insensitive, word-boundary) → major.
      - Has a `### Added` section with at least one bullet → minor.
      - Only `### Fixed` content → patch.
+9. **Resolve PR number (local hint only).** If `$ARGUMENTS` begins with a number, use it and validate `$PR` matches `^[0-9]+$`. Otherwise record `PR=<unresolved>` and defer resolution to Step 0b. **No network call** in this step under any flag combination.
 
-Record: `PR`, `NEXT` (unless `--no-release`), `BUMP_REASON`.
+Record: `PR` (may be `<unresolved>` in auto-resolution dry-run), `NEXT` (unless `--no-release`), `BUMP_REASON`.
 
-## Step 1: Dry-run guard
+## Step 1: Dry-run guard (exits BEFORE any network call)
 
-**If `--dry-run`, exit here.** Print:
+**If `--dry-run`, exit here.** Prints the plan. Every `gh` / network call in Step 0b and later is skipped.
+
+Exit 0 with the following output — and **zero** `gh` / `git fetch` / `git push` / `git ls-remote` invocations in the process tree:
 
 ```txt
 DRY RUN — no writes, no network calls, no git mutations
 --------------------------------------------------------
-PR: #<PR> ("<title>")
+PR: #<PR> ("<title>")    [or: <unresolved — would resolve via `gh pr list` at real-run time>]
 Next version: v<NEXT> (reason: <BUMP_REASON>)
 CHANGELOG.md rewrite:
   --- before ---
@@ -89,6 +88,15 @@ Planned commands:
 ```
 
 Exit 0. The real `CHANGELOG.md` is untouched: all rewriting in Step 2 happens in-memory / to a tempfile only.
+
+## Step 0b: Network preflight (real run only — skipped by `--dry-run`)
+
+These require network and a working `gh` auth:
+
+1. **Resolve PR number if still unresolved.** `gh pr list --head "$(git branch --show-current)" --json number -q '.[0].number'`. Empty → abort: `"No PR found. Pass a PR number or checkout the PR branch first."`. Validate `$PR` matches `^[0-9]+$`.
+2. **PR mergeability** (skip if `--no-check`):
+   - `gh pr view <n> --json mergeable --jq .mergeable` must equal `"MERGEABLE"`.
+   - `gh pr checks <n>` — no REQUIRED check in FAILURE state.
 
 ## Step 2: Rewrite CHANGELOG.md + bump plugin manifests (skip if `--no-release`)
 

@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- `.github/workflows/template-sync.yml` enforces that every file shipped as a plugin template (workflows, `.codex/config.toml`, spec/deploy templates) stays byte-identical with its repo-root counterpart. Any PR that edits only one side of a pair fails with a `cp` command to fix it. Caught 2 pre-existing drifts (deploy templates) on first run.
+
+### Fixed
+
+- `/ai-driver:merge-pr --dry-run` now makes **zero network calls**. Previously Step 0 ran `gh pr view / checks / list` before the dry-run guard, so `--dry-run` failed offline or in sandboxes. Step 0 is now split into `0a: Local preflight` (files + git-local only) and `0b: Network preflight` (mergeability + CI checks); `--dry-run` exits cleanly between them. PR resolution is deferred to 0b when a number is not supplied on the command line — dry-run prints `<unresolved — would resolve via gh pr list at real-run time>`. Closes the Codex round-2 PARTIAL on v0.3.0 PR #2.
+
 ## [0.3.1] - 2026-04-17
 
 ### Fixed

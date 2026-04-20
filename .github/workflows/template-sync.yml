@@ -1,0 +1,69 @@
+name: Template Sync
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/**'
+      - '.codex/**'
+      - 'specs/_template.spec.md'
+      - 'specs/_template.spec.zh-CN.md'
+      - 'deploy/_template.deploy.md'
+      - 'deploy/_template.deploy.zh-CN.md'
+      - 'plugins/ai-driver/templates/**'
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify templates match repo files byte-for-byte
+        run: |
+          set -euo pipefail
+          # Pairs of "<repo-file>:<template-file>" that MUST stay byte-identical.
+          # When you add a new outbound template to the plugin, append it here.
+          PAIRS=(
+            ".github/workflows/auto-release.yml:plugins/ai-driver/templates/.github/workflows/auto-release.yml"
+            ".github/workflows/ci.yml:plugins/ai-driver/templates/.github/workflows/ci.yml"
+            ".github/workflows/template-sync.yml:plugins/ai-driver/templates/.github/workflows/template-sync.yml"
+            ".codex/config.toml:plugins/ai-driver/templates/.codex/config.toml"
+            "specs/_template.spec.md:plugins/ai-driver/templates/specs/_template.spec.md"
+            "specs/_template.spec.zh-CN.md:plugins/ai-driver/templates/specs/_template.spec.zh-CN.md"
+            "deploy/_template.deploy.md:plugins/ai-driver/templates/deploy/_template.deploy.md"
+            "deploy/_template.deploy.zh-CN.md:plugins/ai-driver/templates/deploy/_template.deploy.zh-CN.md"
+          )
+
+          failed=0
+          for p in "${PAIRS[@]}"; do
+            src="${p%%:*}"
+            tpl="${p##*:}"
+            if [ ! -f "$src" ] && [ ! -f "$tpl" ]; then
+              continue
+            fi
+            if [ ! -f "$src" ]; then
+              echo "::error file=$tpl::template exists but repo file $src is missing. Either create $src or remove $tpl from PAIRS."
+              failed=1
+              continue
+            fi
+            if [ ! -f "$tpl" ]; then
+              echo "::error file=$src::repo file exists but template $tpl is missing. Run: cp \"$src\" \"$tpl\""
+              failed=1
+              continue
+            fi
+            if ! cmp -s "$src" "$tpl"; then
+              echo "::error file=$tpl::out of sync with $src. Run: cp \"$src\" \"$tpl\""
+              diff -u "$src" "$tpl" | head -40 || true
+              failed=1
+            fi
+          done
+
+          if [ "$failed" -eq 1 ]; then
+            echo ""
+            echo "Template files must stay byte-identical with the repo files they mirror."
+            echo "The plugin ships the template copies to user projects via /ai-driver:init."
+            echo "If a repo file and its template intentionally diverge, remove the pair from"
+            echo "PAIRS in .github/workflows/template-sync.yml (and mirror that change)."
+            exit 1
+          fi
+
+          echo "All template pairs are in sync."
