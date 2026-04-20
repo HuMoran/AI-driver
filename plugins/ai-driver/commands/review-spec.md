@@ -47,7 +47,9 @@ If any rule fails → print all failures, emit `LAYER0: FAIL`, exit 2. No Layer 
 
 ## Layer 1: Claude in-session adversarial review
 
-The main agent (Claude in this session) performs this review directly. **Prompt (literal, audited — do not paraphrase):**
+The main agent (Claude in this session) performs this review directly using the literal audited prompt below.
+
+### Layer 1 prompt (literal)
 
 ```
 You are an adversarial reviewer of an engineering spec. Be terse and direct.

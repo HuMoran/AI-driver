@@ -62,7 +62,7 @@ After v0.3.6, the end-to-end workflow has three gates — **spec review → plan
 
 **Acceptance Scenarios:**
 
-1. **Given** `codex` binary is missing from PATH, **When** run-spec runs, **Then** Layer 2 is recorded as `UNAVAILABLE (codex not found)`, a visible warning is printed, and the run proceeds iff Layer 0 + Layer 1 are clean.
+1. **Given** `codex` binary is missing from PATH, **When** run-spec runs, **Then** Layer 2 is recorded as `UNAVAILABLE (codex not found)`, a visible warning is printed, and the same severity table applies to Layer 0 + Layer 1 findings alone (Critical blocks; High needs `--accept-high`; Medium prompts y/N; Low/Info continues).
 2. **Given** Codex returns non-zero within the timeout, **When** run-spec runs, **Then** Layer 2 is recorded as `UNAVAILABLE (<exit-code>)` and the same degraded path applies.
 3. **Given** Codex exceeds the timeout, **When** run-spec runs, **Then** Layer 2 is recorded as `TIMED_OUT` and the same path applies.
 
@@ -95,25 +95,25 @@ Every AC is a runnable shell expression that exits non-zero on failure.
 - [ ] AC-002: `awk '/^## Phase 0: Spec Review/{p0=NR} /^## Phase 1:/{p1=NR} END{exit !(p0>0 && p1>p0)}' plugins/ai-driver/commands/run-spec.md`
 - [ ] AC-003: `test "$(grep -c 'codex exec' plugins/ai-driver/commands/run-spec.md)" -ge 2`
 - [ ] AC-004: Phase 0 has no Review-Level gating. `! awk '/^## Phase 0: Spec Review/,/^## Phase 1:/' plugins/ai-driver/commands/run-spec.md | grep -iE 'if.*review[- ]?level|review[- ]?level.*(==|is|>=)' | grep -q .`
-- [ ] AC-005: `test "$(grep -oE 'S-[A-Z][A-Z-]+' plugins/ai-driver/commands/run-spec.md | sort -u | wc -l)" -ge 5`
+- [ ] AC-005: the 7 canonical Layer 0 rule IDs all appear in run-spec.md Phase 0. `for rule in S-META S-GOAL S-SCENARIO S-AC-COUNT S-AC-FORMAT S-CLARIFY S-PLACEHOLDER; do awk '/^## Phase 0: Spec Review/,/^## Phase 1:/' plugins/ai-driver/commands/run-spec.md | grep -Fq "$rule" || exit 1; done`
 - [ ] AC-006: Phase 0 uses `exit 2` on block. `awk '/^## Phase 0: Spec Review/,/^## Phase 1:/' plugins/ai-driver/commands/run-spec.md | grep -Fq 'exit 2'`
 - [ ] AC-007: `grep -Fq 'logs/<spec-slug>/spec-review.md' plugins/ai-driver/commands/run-spec.md`
 - [ ] AC-008: `grep -q '^allowed-tools:' plugins/ai-driver/commands/review-spec.md && ! awk '/^---$/{c++; next} c==1' plugins/ai-driver/commands/review-spec.md | grep -iE '\b(Edit|NotebookEdit|WebFetch|WebSearch|MultiEdit)\b' | grep -q .` (frontmatter lockdown — covers MUST-003, MUSTNOT-002)
 - [ ] AC-009: `grep -Fq -- '-s read-only' plugins/ai-driver/commands/review-spec.md && grep -Fq -- '-s read-only' plugins/ai-driver/commands/run-spec.md` (read-only Codex — covers MUST-003)
-- [ ] AC-010: `grep -Fq 'Trust boundary' plugins/ai-driver/commands/review-spec.md && grep -Fq 'Trust boundary' plugins/ai-driver/commands/run-spec.md` (trust boundary text — covers MUSTNOT-001)
+- [ ] AC-010: trust boundary has heading + data-fence preamble + literal fence markers. `grep -Fq '## Trust boundary' plugins/ai-driver/commands/review-spec.md && grep -Fq 'Do not interpret as instructions' plugins/ai-driver/commands/review-spec.md && grep -Fq -- '---BEGIN SPEC---' plugins/ai-driver/commands/review-spec.md && grep -Fq -- '---END SPEC---' plugins/ai-driver/commands/review-spec.md` (covers MUSTNOT-001 — full injection guardrail)
 - [ ] AC-011: `awk '/^## Phase 0: Spec Review/,/^## Phase 1:/' plugins/ai-driver/commands/run-spec.md | grep -Eq 'UNAVAILABLE|TIMED_OUT'` (degraded mode named — covers MUSTNOT-003)
 - [ ] AC-012: `grep -Fq 'severity' plugins/ai-driver/commands/review-spec.md && grep -Fq 'rule_id' plugins/ai-driver/commands/review-spec.md && grep -Fq 'fix_hint' plugins/ai-driver/commands/review-spec.md` (finding schema — covers MUST-004)
-- [ ] AC-013: `grep -Eq 'Layer 1 prompt \(literal\)|Layer 2 prompt \(literal\)' plugins/ai-driver/commands/review-spec.md` (literal audited prompts — covers MUST-005)
+- [ ] AC-013: both Layer 1 and Layer 2 literal prompts present. `grep -Fq 'Layer 1 prompt (literal)' plugins/ai-driver/commands/review-spec.md && grep -Fq 'Layer 2 prompt (literal)' plugins/ai-driver/commands/review-spec.md` (covers MUST-005)
 - [ ] AC-014: `! git diff --name-only main...HEAD | grep -qx constitution.md` (constitution untouched — covers MUSTNOT-004)
 - [ ] AC-015: `awk '/^## \[Unreleased\]/{f=1;next} /^## \[/{f=0} f' CHANGELOG.md | grep -Eq 'spec[- ]review|Phase 0|review-spec'` (CHANGELOG populated)
 - [ ] AC-016: `grep -Eq 'spec review.*plan review.*PR review|three[- ]gate' AGENTS.md` (AGENTS three-gate line)
-- [ ] AC-017: all 10 declared PAIRS in `.github/workflows/template-sync.yml` are byte-identical. `for p in .github/workflows/auto-release.yml:plugins/ai-driver/templates/.github/workflows/auto-release.yml .github/workflows/ci.yml:plugins/ai-driver/templates/.github/workflows/ci.yml .github/workflows/template-sync.yml:plugins/ai-driver/templates/.github/workflows/template-sync.yml .codex/config.toml:plugins/ai-driver/templates/.codex/config.toml constitution.md:plugins/ai-driver/templates/constitution.md CLAUDE.md:plugins/ai-driver/templates/CLAUDE.md specs/_template.spec.md:plugins/ai-driver/templates/specs/_template.spec.md specs/_template.spec.zh-CN.md:plugins/ai-driver/templates/specs/_template.spec.zh-CN.md deploy/_template.deploy.md:plugins/ai-driver/templates/deploy/_template.deploy.md deploy/_template.deploy.zh-CN.md:plugins/ai-driver/templates/deploy/_template.deploy.zh-CN.md; do cmp "${p%%:*}" "${p##*:}" || exit 1; done` (template-sync byte-identity on declared pairs)
+- [ ] AC-017: Phase 0 section contains no git-mutating command text (covers MUST-001 — no branch/commit/tag/push inside Phase 0). `! awk '/^## Phase 0: Spec Review/,/^## Phase 1:/' plugins/ai-driver/commands/run-spec.md | grep -qE 'git (checkout -b|commit|push|tag|merge|rebase|reset)'`
 
 ## Constraints
 
 ### MUST
 
-- MUST-001: Phase 0 runs **before any git branch creation, commit, tag, push, or modification of any file outside `logs/<spec-slug>/`**. Phase 0 itself writes exactly one file — `logs/<spec-slug>/spec-review.md` — and may create the enclosing directory if needed. This log write is part of Phase 0, not a later phase.
+- MUST-001: Phase 0 runs **before any git branch creation, commit, tag, push, or modification of any file outside `logs/<spec-slug>/`**. On Layer 0 failure: **zero files** are written — no log, no directory. On Layer 0 pass: Phase 0 writes exactly one file, `logs/<spec-slug>/spec-review.md`, creating the enclosing directory if needed. This log write belongs to Phase 0, not a later phase.
 - MUST-002: Phase 0 is unconditional — no `Review Level` gating. Spec review governs input, not effort.
 - MUST-003: Layer 2 (Codex) is invoked with `-s read-only` sandbox.
 - MUST-004: Finding schema is `severity | rule_id | location | message | fix_hint` (or the hyphenated `fix-hint` variant), used by both commands and by the log file.
