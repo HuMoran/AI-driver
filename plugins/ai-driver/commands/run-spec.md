@@ -146,7 +146,9 @@ Run Codex as a tracked background job so the notification arrives automatically 
 # Invocation (the main agent should use Bash(run_in_background=true) via the
 # tool, not a literal shell snippet; shown here as the equivalent shell form
 # for audit clarity):
-codex exec --model gpt-5.4 --config model_reasoning_effort="high" -s read-only "$CODEX_SPEC_REVIEW_PROMPT" < "$SPEC_PATH"
+# Wrap stdin in the BEGIN/END SPEC fences the Layer 2 literal prompt expects:
+{ printf -- '---BEGIN SPEC---\n'; cat "$SPEC_PATH"; printf -- '\n---END SPEC---\n'; } | \
+  codex exec --model gpt-5.4 --config model_reasoning_effort="high" -s read-only "$CODEX_SPEC_REVIEW_PROMPT"
 ```
 
 Notes:
@@ -167,7 +169,7 @@ Write `logs/<spec-slug>/spec-review.md` containing three sections (Layer 0 / Lay
 
 ### Gating
 
-Build a consensus table by `rule_id`. A finding raised by both Layer 1 and Layer 2 is marked `dual-raised` and upgraded one severity notch (same pattern as `review-pr.md`).
+Build a consensus table keyed by **`(rule_id, normalized location)`** — lowercase rule_id, whitespace-trimmed location, with ±3-line fuzz on `file:line` positions to absorb Codex line-offset drift. Two findings with the same rule_id but genuinely different locations are separate rows, **not** merged. A finding raised by both Layer 1 and Layer 2 on the same `(rule_id, normalized location)` key is marked `dual-raised` and upgraded one severity notch (same pattern as `review-spec.md` / `review-pr.md`).
 
 | Severity | Action |
 |---|---|

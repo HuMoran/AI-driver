@@ -136,7 +136,8 @@ CODEX_SPEC_REVIEW_PROMPT=$(awk '
 # 2. Dispatch Codex via Claude Code's Bash(run_in_background=true) pattern.
 #    The main agent should invoke the Bash tool with run_in_background=true
 #    (not a literal shell `&`); shown here as the equivalent shell form for audit:
-codex exec --model gpt-5.4 --config model_reasoning_effort="high" -s read-only "$CODEX_SPEC_REVIEW_PROMPT" < "$SPEC_PATH"
+{ printf -- '---BEGIN SPEC---\n'; cat "$SPEC_PATH"; printf -- '\n---END SPEC---\n'; } | \
+  codex exec --model gpt-5.4 --config model_reasoning_effort="high" -s read-only "$CODEX_SPEC_REVIEW_PROMPT"
 # 3. On the next main-session turn, the task-completion notification fires;
 #    the main agent reads stdout via BashOutput and parses into the finding schema.
 ```
