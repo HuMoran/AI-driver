@@ -72,8 +72,11 @@ Findings are emitted as a Markdown table with columns: `Severity | rule_id | loc
 Run:
 
 ```bash
-codex exec --model gpt-5.4 --config model_reasoning_effort="high" -s read-only \
-  "$CODEX_SPEC_REVIEW_PROMPT" < "$SPEC_PATH"
+# Wrap the spec in explicit BEGIN/END markers so the trust boundary is visible
+# at both the runtime and model layer (prompt text references the same markers):
+{ printf -- '---BEGIN SPEC---\n'; cat "$SPEC_PATH"; printf -- '\n---END SPEC---\n'; } \
+  | codex exec --model gpt-5.4 --config model_reasoning_effort="high" -s read-only \
+      "$CODEX_SPEC_REVIEW_PROMPT"
 ```
 
 `$CODEX_SPEC_REVIEW_PROMPT` is the literal prompt from `review-spec.md` §"Layer 2 prompt (literal)". Timeout: `${CODEX_TIMEOUT_SEC:-180}` seconds.
