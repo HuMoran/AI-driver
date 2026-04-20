@@ -118,7 +118,7 @@ The flag description says "before any write, git operation, or network call", bu
 - [ ] AC-002 (B-1): `grep -c '<spec-slug>\|spec-slug' plugins/ai-driver/commands/run-spec.md >= 2` (slug concept introduced and used)
 - [ ] AC-003 (B-2): `grep -q 'subosito/flutter-action' plugins/ai-driver/templates/.github/workflows/ci.yml`
 - [ ] AC-004 (B-2): same in repo-root `.github/workflows/ci.yml`
-- [ ] AC-005 (B-3): `grep -q '\\^\\[0-9\\]\\+\\\\\\.' .github/workflows/auto-release.yml` (semver guard regex present) and same in template copy
+- [ ] AC-005 (B-3): semver guard AND proper step gating. `grep -Fq 'is_semver=true' .github/workflows/auto-release.yml` AND `grep -Fq "if: steps.semver.outputs.is_semver == 'true'" .github/workflows/auto-release.yml` — verify the check AND that subsequent steps are actually gated by it (earlier design with `exit 0` inside a run step did not skip following steps). Same in template copy.
 - [ ] AC-006 (B-4): `grep -A3 'jq.*marketplace.json' plugins/ai-driver/commands/merge-pr.md | grep -q '\\.new'` (tempfile pattern present)
 - [ ] AC-007 (B-5): `! grep -q '^\\s\\+paths:' .github/workflows/template-sync.yml` and same for template copy (paths filter removed)
 - [ ] AC-008 (B-6): `grep -q 'local read-only git commands may run' plugins/ai-driver/commands/merge-pr.md`

@@ -4,9 +4,11 @@ Usage: `/ai-driver:run-spec <path-to-spec-file>`
 
 You are an AI engineer executing a spec-driven development workflow. Read the spec file provided as `$ARGUMENTS` and execute it end-to-end.
 
-## Spec slug convention
+## Spec identifiers
 
-Throughout this command `<spec-slug>` is the filename basename of the spec with `.spec.md` stripped. Examples:
+Two related but distinct identifiers, derived deterministically from the spec file:
+
+1. **`<spec-slug>`** — filename basename with `.spec.md` stripped. Used for log directory paths (`logs/<spec-slug>/`). Examples:
 
 | Spec path | `<spec-slug>` |
 |---|---|
@@ -14,7 +16,11 @@ Throughout this command `<spec-slug>` is the filename basename of the spec with 
 | `specs/fix-issue-42.spec.md` | `fix-issue-42` |
 | `specs/v035-copilot-backlog.spec.md` | `v035-copilot-backlog` |
 
-Use `<spec-slug>` as the stable identifier for: log directory paths, default branch names, and PR-body spec-path links. The `Meta` section only contains `Date` and `Review Level` — no identity fields. Everything identity-related flows from the filename.
+2. **`<branch-slug>`** — `<spec-slug>` normalized to be a valid git ref: lowercase, replace any character that's not `[a-z0-9]`, `.`, or `-` with `-`, collapse runs of `-`, trim leading/trailing `-`. Example: `user auth` → `user-auth`, `weird Name_42` → `weird-name-42`. Used only for branch names (`feat/<branch-slug>` or `fix/<branch-slug>`). If `<spec-slug>` is already ref-safe (only `[a-z0-9-.]`, no spaces), `<branch-slug>` equals `<spec-slug>`.
+
+3. **`<spec-path>`** — the actual path from `$ARGUMENTS`. Used for the PR-body "Spec" link verbatim, so nested directories (e.g., `specs/2026-04/foo.spec.md`) or filenames with unusual characters are linked without loss.
+
+The `Meta` section only contains `Date` and `Review Level` — no identity fields. Everything identity-related flows from the filename.
 
 ## Pre-flight
 
@@ -28,7 +34,7 @@ Use `<spec-slug>` as the stable identifier for: log directory paths, default bra
 
 - Check `git status` — if there are uncommitted changes, STOP and ask user to commit or stash first.
 - Check if `gh auth status` succeeds — if not, warn user but continue (PR creation will fail later).
-- **Default branch name**: `feat/<spec-slug>` if the primary intended commit type is `feat`, else `fix/<spec-slug>`. Pick by reading the spec's Goal and User Scenarios — if they describe a new capability, use `feat`; if they describe a bug fix / regression, use `fix`. If ambiguous, default to `feat`.
+- **Default branch name**: `feat/<branch-slug>` if the primary intended commit type is `feat`, else `fix/<branch-slug>`. `<branch-slug>` is the ref-safe normalization of `<spec-slug>` (see §"Spec identifiers"). Pick `feat` vs `fix` by reading the spec's Goal and User Scenarios; if ambiguous, default to `feat`.
 - Check if the branch already exists:
   - If it does AND has commits beyond `main`: ask user whether to resume from existing branch or start fresh.
   - If it does with no extra commits: switch to it.
@@ -117,7 +123,7 @@ Create PR with `gh pr create`:
 
 - Title: Conventional Commits format matching the primary change type.
 - Body must include:
-  - **Spec**: relative link to the spec file (e.g., `[specs/<spec-slug>.spec.md](specs/<spec-slug>.spec.md)`).
+  - **Spec**: markdown link using the actual `<spec-path>` from `$ARGUMENTS` (not reconstructed from slug), so nested dirs / unusual filenames round-trip: `` `[<spec-path>](<spec-path>)` ``.
   - The acceptance report from Phase 3.
   - Summary of changes.
 
