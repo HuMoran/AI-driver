@@ -58,10 +58,10 @@ cp specs/_template.spec.md specs/my-feature.spec.md
 | ----------------------------- | ---------------------------------------- |
 | `/ai-driver:init`             | 把 AI-driver 文件铺到当前项目            |
 | `/ai-driver:run-spec <文件>`  | 端到端执行 spec：规划、实现、测试、提 PR |
-| `/ai-driver:review-pr [编号]` | Claude + Codex 双盲 PR 审查              |
+| `/ai-driver:review-pr [编号]` | Claude + Codex 双盲 PR 审查；读取全部已有 review/评论（含 Copilot） |
 | `/ai-driver:merge-pr [编号]`  | 合并 PR、更新 CHANGELOG、打 tag、触发发版 |
 | `/ai-driver:doctor`           | 只读健康检查 —— 探测漂移和误配置        |
-| `/ai-driver:fix-issues`       | 批量修复带 `ai-fix` 标签的 GitHub issue  |
+| `/ai-driver:fix-issues`       | 批量修复带 `ai-fix` 标签的 GitHub issue；读取完整 issue 线程含 bot 诊断 |
 | `/ai-driver:run-tests`        | 自动识别并运行项目测试                   |
 | `/ai-driver:deploy <环境>`    | 按 `deploy/<project>.deploy.md` 执行部署 |
 

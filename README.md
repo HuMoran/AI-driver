@@ -58,10 +58,10 @@ cp specs/_template.spec.md specs/my-feature.spec.md
 | ------------------------------- | --------------------------------------------------------- |
 | `/ai-driver:init`               | Scaffold AI-driver files into the current project         |
 | `/ai-driver:run-spec <file>`    | Execute a spec end-to-end: plan, implement, test, PR      |
-| `/ai-driver:review-pr [number]` | Dual-blind PR review (Claude + Codex)                     |
+| `/ai-driver:review-pr [number]` | Dual-blind PR review (Claude + Codex); reads all existing reviews/comments (incl. Copilot) |
 | `/ai-driver:merge-pr [number]`  | Merge PR, update CHANGELOG, tag, trigger release          |
 | `/ai-driver:doctor`             | Read-only health check — detects drift and misconfiguration |
-| `/ai-driver:fix-issues`         | Batch-fix GitHub issues labeled `ai-fix`                  |
+| `/ai-driver:fix-issues`         | Batch-fix GitHub issues labeled `ai-fix`; reads full issue thread incl. bot diagnostics |
 | `/ai-driver:run-tests`          | Detect and run the project test suite                     |
 | `/ai-driver:deploy <env>`       | Execute the deploy flow from `deploy/<project>.deploy.md` |
 
