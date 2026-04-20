@@ -124,26 +124,29 @@ Commands and language rules live inside the installed plugin, not in your projec
 ```txt
 Human writes spec → /ai-driver:run-spec
                          ↓
-    Phase 0: spec review  (Layer 0 grep + Claude + Codex, unconditional)   ← gate 1/3
+    Phase 0: spec review  (Layer 0 grep + subagent + Codex, unconditional)   ← gate 1/3
                          ↓
-    Phase 1: plan review  (Codex adversarial, ONLY when Review Level ≥ B)  ← gate 2/3 (optional)
+    Phase 1: plan review  (subagent + Codex, ONLY when Review Level ≥ B)     ← gate 2/3 (optional)
                          ↓
                   AI code + test → PR
                          ↓
-                  /ai-driver:review-pr                                     ← gate 3/3
-                  (Claude + Codex + existing reviewer, triple-consensus)
+                  /ai-driver:review-pr                                       ← gate 3/3
+                  (subagent Pass 1 + Codex Pass 2 + existing reviewer)
                          ↓
                   /ai-driver:merge-pr → GitHub Actions → tag + release
                          ↓
        Human tests → issue → /ai-driver:fix-issues → PR → ...
 ```
 
-The three-gate pipeline (v0.3.6+) catches defects at the cheapest stage: spec before plan, plan before code, code before merge. **The three gates are not identical:**
-- **Gate 1** (spec review) runs Layer 0 mechanical grep + Layer 1 Claude in-session + Layer 2 Codex external, with dual-consensus severity upgrade when both LLM layers agree. Unconditional — runs regardless of the spec's `Review Level`.
-- **Gate 2** (plan review inside `run-spec`) is an **optional** Codex-only adversarial pass, executed only when the spec's `Review Level` is `B` or `C`. No Claude pass, no dual-consensus semantics.
-- **Gate 3** (PR review) combines Claude Pass 1 + Codex Pass 2 + ingestion of existing reviewer comments (Copilot / humans / bots) for triple-consensus severity upgrades.
+The three-gate pipeline (v0.3.6+, dual-LLM uniform as of v0.3.8) catches defects at the cheapest stage: spec before plan, plan before code, code before merge. **All three gates now have the same shape:**
 
-Standalone `/ai-driver:review-spec` lets you pre-flight a draft spec without cutting a branch — same Layer 0 + Layer 1 + Layer 2 as Gate 1.
+- **Gate 1** (spec review): Layer 0 mechanical grep + **Claude subagent** (sandboxed `Read, Grep, Glob`, path-based handoff) + Codex external via `codex exec -s read-only`. Dual-consensus severity upgrade on findings keyed by `rule_id + normalized location`. **Unconditional**.
+- **Gate 2** (plan review inside `run-spec`): same shape — **subagent + Codex dual-LLM** — but **gated by Review Level ≥ B**.
+- **Gate 3** (PR review): **stage-then-read** (untrusted PR artifacts fetched via `gh ... > "$STAGE/..."` to a `mktemp -d` tempdir, stdout AND stderr redirected, so the main session never ingests raw bytes) + subagent Pass 1 + Codex Pass 2 + existing-reviewer cross-check for triple-consensus.
+
+Claude passes run inside **sandboxed subagents** (v0.3.8+): the untrusted content never enters the main session's prompt, findings return through a length-capped + pipe-escaped parser with a fixed-literal `parse-error` fallback — so a compromised subagent cannot smuggle attacker bytes back. Codex passes dispatch via Claude Code's `Bash(run_in_background=true)` pattern — the completion notification arrives automatically on the next turn, no polling, no silently dropped reviews.
+
+Standalone `/ai-driver:review-spec` lets you pre-flight a draft spec without cutting a branch — same Layer 0 + subagent + Codex as Gate 1.
 
 ## Standards
 

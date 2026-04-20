@@ -124,26 +124,29 @@ deploy/             — 可选的部署文档
 ```txt
 人写 spec → /ai-driver:run-spec
                   ↓
-   Phase 0: spec 审查（Layer 0 grep + Claude + Codex，无条件）    ← 第 1/3 道门
+   Phase 0: spec 审查（Layer 0 grep + subagent + Codex，无条件）   ← 第 1/3 道门
                   ↓
-   Phase 1: plan 审查（Codex 对抗，仅当 Review Level ≥ B 才跑）    ← 第 2/3 道门（可选）
+   Phase 1: plan 审查（subagent + Codex，仅当 Review Level ≥ B）   ← 第 2/3 道门（可选）
                   ↓
              AI 编码 + 测试 → PR
                   ↓
              /ai-driver:review-pr                                  ← 第 3/3 道门
-             （Claude + Codex + 已有 reviewer，三方共识）
+             （subagent Pass 1 + Codex Pass 2 + 已有 reviewer）
                   ↓
              /ai-driver:merge-pr → GitHub Actions → tag + release
                   ↓
         人工测试 → issue → /ai-driver:fix-issues → PR → ...
 ```
 
-三门流水线（v0.3.6+）在最便宜的阶段夹断缺陷：spec 在 plan 之前、plan 在 code 之前、code 在 merge 之前。**三道门的审查方式并不相同：**
-- **第 1 道门**（spec 审查）：Layer 0 机械 grep + Layer 1 Claude 会话内 + Layer 2 Codex 外部；两个 LLM 层共识则升一级严重度。**无条件**执行，不看 `Review Level`。
-- **第 2 道门**（run-spec 里的 plan 审查）：**可选** Codex-only 对抗，只在 spec 的 `Review Level` 为 `B` 或 `C` 时跑。无 Claude 层，也无双共识语义。
-- **第 3 道门**（PR 审查）：Claude Pass 1 + Codex Pass 2 + 摄取已有 reviewer 评论（Copilot/人工/bot），三方共识则升一级严重度。
+三门流水线（v0.3.6+，v0.3.8 统一双 LLM）在最便宜的阶段夹断缺陷：spec 在 plan 之前、plan 在 code 之前、code 在 merge 之前。**v0.3.8 起三道门形态一致：**
 
-独立的 `/ai-driver:review-spec` 让你在切分支之前先对草稿 spec 做预检 — 跟第 1 道门同一套 Layer 0 + Layer 1 + Layer 2。
+- **第 1 道门**（spec 审查）：Layer 0 机械 grep + **Claude subagent**（沙箱化，`Read, Grep, Glob` 三件套，path-based 交付）+ Codex 外部 `codex exec -s read-only`。双共识（`rule_id + normalized location` 匹配）升一级严重度。**无条件**执行。
+- **第 2 道门**（run-spec 里的 plan 审查）：同构 — **subagent + Codex 双 LLM** — 但 **仅当 Review Level ≥ B 才跑**。
+- **第 3 道门**（PR 审查）：**stage-then-read**（untrusted PR 产物通过 `gh ... > "$STAGE/..."` 拉到 `mktemp -d` 临时目录，stdout 和 stderr 都重定向，主会话**不吃原始字节**）+ subagent Pass 1 + Codex Pass 2 + 已有 reviewer 三方共识。
+
+Claude 审查跑在**沙箱化 subagent** 里（v0.3.8+）：不可信内容从不进主会话 prompt，findings 经由 "长度上限 + pipe/backtick 转义 + parse-error 固定字面量" 的解析器回流 — 即便 subagent 被攻陷也无法把攻击字节走私进来。Codex 调用走 Claude Code 的 `Bash(run_in_background=true)` — 完成通知下一轮自动送达，无需轮询，不会悄悄漏审。
+
+独立的 `/ai-driver:review-spec` 让你在切分支前先对草稿 spec 做预检 — 与第 1 道门同一套 Layer 0 + subagent + Codex。
 
 ## 规范遵从
 

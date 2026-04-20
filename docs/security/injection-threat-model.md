@@ -79,6 +79,22 @@ Each class has:
 
 **Lint:** `L-BOT` greps `review-pr.md` + `fix-issues.md` for `user.type` or `[bot]` suffix checks, and fails if any `startsWith("copilot-")` / `startsWith("dependabot-")` heuristic appears.
 
+## R-009 — Review runs in a sandbox executor (v0.3.8+)
+
+<a id="R-009"></a>
+
+**Mitigation target:** review-body-approval-hijack and all other prompt-injection-via-PR-content attacks (see `review-body-approval-hijack.md` fixture).
+
+**Mechanism.** Every AI review in the three-gate pipeline runs inside a sandboxed executor:
+
+- **Claude pass** → Claude Code subagent with `allowed-tools: Read, Grep, Glob` (no Write, no Bash, no network, no Agent). Subagent prompt lists an explicit read-allowlist and forbids nested spawn. Untrusted content never enters the main session's prompt.
+- **Codex pass** → `codex exec -s read-only` dispatched via Claude Code's `Bash(run_in_background=true)`. Completion notification auto-delivered to the next main-session turn.
+- **Gate 3 (PR review) stage-then-read.** Main session creates a per-run `mktemp -d` tempdir, sets `chmod 700`, installs a `trap rm -rf` cleanup, disables shell tracing (`set +x`), then fetches PR artifacts with **both** stdout AND stderr redirected to files under `$STAGE/`. The main session's Bash tool captures only the exit code, never the bytes. Subagent reads `$STAGE/*` with its `Read` permission. Fail-closed: any non-zero fetch aborts before any subagent spawn.
+- **PR-body-derived spec paths** go through the same v0.3.7 path gate (reject `..`, canonicalize via `pwd -P`, confirm under `$(cd specs && pwd -P)/`) before being staged. Extraction uses `jq ... > $STAGE/candidate-spec-paths.txt` so body bytes never enter the main session.
+- **Return-channel sanitization.** Subagent output passes through a fixed-schema parser — cell length caps (200/100), pipe + backtick escaping, fixed-literal `parse-error` message — so a compromised subagent cannot smuggle attacker bytes back into the main session.
+
+**Lint coverage:** v0.3.7 injection-lint rules `L-TRUST`, `L-QUOTE`, `L-SELF-ID`, `L-BOT`, `L-EXTRACT` continue to apply. v0.3.8 adds structural ACs in the spec that enforce the subagent + stage-then-read invariants (not a new lint rule yet — that's a potential v0.3.9 follow-up).
+
 ## Out of scope — attacks we do NOT defend against
 
 AI-driver operates inside a trusted developer environment. The following classes are out of scope; the user is responsible for preventing them by other means.
