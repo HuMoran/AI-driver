@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.3.3] - 2026-04-20
+
+### Added
+
+- `/ai-driver:doctor` — read-only health check for a project using AI-driver. Detects: missing `constitution.md` / `AGENTS.md`, `CLAUDE.md` not importing `@AGENTS.md` (or import in wrong position), drift of `constitution.md` from the latest plugin template, legacy v0.1 filename patterns (`specs/pNN_*.spec.md`), missing or malformed `.claude/settings.json` entries, plugin version skew, and invalid `.claude-plugin/*.json` for plugin-publishing projects. Every finding prints an exact copy-paste fix command. Never modifies any file, never calls the network. Frontmatter `allowed-tools` excludes all write / network operations as a hard guardrail.
+
 ## [0.3.2] - 2026-04-20
 
 ### Added
