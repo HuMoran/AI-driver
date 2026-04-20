@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.3.8] - 2026-04-20
+
 ### Changed (BREAKING — architecture of all three review gates)
 
 - **All three review gates run Claude in a sandboxed subagent, not the main session.** `/ai-driver:run-spec` Phase 0 Layer 1 (Gate 1 spec review), Phase 1 Plan Review (Gate 2), and `/ai-driver:review-pr` Pass 1 (Gate 3) now spawn a dedicated subagent with `allowed-tools: Read, Grep, Glob` — no Write, no network, no nested spawn. The main session passes only paths; the subagent reads artifacts from disk. Rationale: untrusted content (spec body, plan text, PR diff, reviewer comments) never enters the main session's context, so prompt-injection attacks have nothing to inject into. Each subagent prompt also bounds its filesystem reads to an explicit allow-list and forbids nested spawn.
