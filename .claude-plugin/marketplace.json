@@ -5,14 +5,14 @@
   },
   "metadata": {
     "description": "Language-agnostic AI-driven development framework. Humans write specs, AI does the rest.",
-    "version": "0.3.5"
+    "version": "0.3.6"
   },
   "plugins": [
     {
       "name": "ai-driver",
       "source": "./plugins/ai-driver",
       "description": "Claude Code plugin for the AI-driver framework",
-      "version": "0.3.5",
+      "version": "0.3.6",
       "author": {
         "name": "HuMoran"
       },

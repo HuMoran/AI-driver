@@ -1,0 +1,50 @@
+# Implementation Log — v036-spec-review
+
+## What was implemented
+
+1. `plugins/ai-driver/commands/review-spec.md` — new standalone command. Read-only by default; `allowed-tools` frontmatter limits to Read, Glob, Grep, Bash(codex exec:*), Bash(grep:*), Bash(awk:*), Bash(sed:*), Bash(cat:*), Bash(mkdir:*), Bash(wc:*), Write. Supports `--write-log`, `--no-codex`, `--accept-high`. Contains literal Layer 1 + Layer 2 prompts, Trust boundary preamble, and data-fence markers (`---BEGIN SPEC---` / `---END SPEC---`).
+
+2. `plugins/ai-driver/commands/run-spec.md` — restructured:
+   - Pre-flight trimmed to read-only validation (removed fields now governed by Layer 0).
+   - **NEW**: `## Phase 0: Spec Review (MANDATORY — unconditional)` inserted before Phase 1. Contains Gating summary, Layer 0 rule table (7 `S-*` rules), Layer 1 & Layer 2 sections (referencing literal prompts in review-spec.md), degraded-mode handling (`UNAVAILABLE`, `TIMED_OUT`), consensus + severity gating table.
+   - Old "Phase 0: Prepare" content folded into "Phase 1: Prepare + Design Action Plan" so state mutation only begins after Phase 0 passes.
+   - Phase numbering preserved (Phase 1..4 still cover plan + implement + acceptance + PR).
+
+3. `AGENTS.md` — added "Three-gate workflow" paragraph explaining spec review → plan review → PR review pipeline.
+
+4. `CHANGELOG.md` — `[Unreleased]` populated with Added / Changed / Dogfood sections describing the feature + the bootstrap dogfood outcome.
+
+## What existing code was leveraged
+
+- Trust boundary language and data-fence pattern from `plugins/ai-driver/commands/review-pr.md` (v0.3.4).
+- `allowed-tools` frontmatter lockdown pattern from `plugins/ai-driver/commands/doctor.md` (v0.3.3).
+- `codex exec -s read-only` invocation shape from existing Phase 1 Plan review in run-spec.md.
+- Dual-consensus severity upgrade pattern from review-pr.md.
+- Finding schema (`severity | rule_id | location | message | fix_hint`) from review-pr.md.
+
+## Issues encountered
+
+1. **Bootstrap dogfood returned Critical on the v0.3.6 spec itself.** Codex round 1 flagged `MUST-001` as logically impossible: it forbade any file write before Phase 0, but Phase 0 itself needed to write the review log. Fixed by narrowing `MUST-001` to "no mutation outside `logs/<spec-slug>/`" + explicit zero-vs-one file cases for Layer 0 fail/pass. This was the feature demonstrating its own value before implementation completed.
+
+2. **Round 1 also flagged 6 High findings** around AC executability, MUST/MUSTNOT coverage, security coverage, scope discipline, and live-model dogfood nondeterminism. All revised in the same pre-implementation commit.
+
+3. **Round 2 (post-revision) dropped Critical to zero** but surfaced 4 new High. Three were fixed in-place (tightened AC-005, AC-010, AC-013; dropped ambient AC-017 template-sync for MUST-001-coverage AC). The fourth — `AC-COVER-001` asking for runtime fixture tests of exit codes and branch state — was deferred to v0.3.7 (`specs/v037-injection-tests.spec.md` already carries fixture-harness work) via `--accept-high` rationale.
+
+4. **Self-referential test problem**: the new Phase 0 would ideally be the thing that gates this PR's spec. But the feature didn't exist before this branch — chicken-and-egg. Resolved by executing the three-layer review manually (Layer 0 shell, Layer 1 in-session Claude, Layer 2 via `codex exec`) and logging to `logs/v036-spec-review/spec-review.md` + `spec-review-round2.md` as if the feature existed. Future runs on any spec execute automatically via the command doc.
+
+## Scope discipline notes (R-003)
+
+Explicitly deferred to future cycles:
+- Runtime fixture-based AC harness (`AC-COVER-001`) → v0.3.7 injection-fixtures spec already parked at `specs/v037-injection-tests.spec.md`.
+- Constitution amendment `R-008` → proposed in PR body, awaiting explicit human approval per governance.
+- Live-model dogfood ACs (originally AC-009/010 in round-1 spec) → removed; dogfood evidence attached as round-1 + round-2 review logs, not gating ACs.
+
+Not expanded beyond spec scope: no new commands (only `review-spec`), no template pair changes, no per-language rules.
+
+## R-007 Final status
+
+**DONE_WITH_CONCERNS**
+
+Concerns:
+1. Runtime fixture tests deferred to v0.3.7 (tracked).
+2. Bootstrap dogfood had to be manual because feature didn't exist yet; first real autonomous run will be v0.3.7 using this spec's new Phase 0.
