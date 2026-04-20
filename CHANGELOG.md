@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- `/ai-driver:review-pr` now reads the **entire existing conversation** on the PR — reviews, inline line comments, and issue-style comments — before running Claude Pass 1 and Codex Pass 2. Existing findings from Copilot, human reviewers, and other bots are passed to both AI passes as context. The final report has a dedicated **Existing reviewer findings** table, an **Also flagged by** column for AI findings that match what an existing reviewer already said, and a **Prior-finding resolution** table when a previous `<!-- ai-driver-review -->` comment exists on the PR. This closes the silent loss of Copilot / human findings observed across v0.2 and v0.3 PRs.
+- Triple-consensus logic: an issue flagged by 2+ independent sources (Claude, Codex, existing reviewer) is upgraded a severity notch; flagged by all 3 → CRITICAL regardless of individual ratings.
+- Every posted `review-pr` body now starts with an `<!-- ai-driver-review -->` HTML-comment marker so subsequent runs can self-identify and avoid meta-recursion.
+- `/ai-driver:fix-issues` Mode B now reads the full issue thread (not just title + body) via `gh api /issues/<n>/comments --paginate`. Generated specs cite specific thread excerpts with `> Comment from <author> @ <date>:` format. Bot-posted structured diagnostics (stack traces, Sentry fingerprints, Dependabot advisories) are preserved verbatim and tagged by bot login so human prose and machine data are never conflated.
+- `/ai-driver:fix-issues` Mode A now refuses to trust a bot-authored spec comment by default; override with `--trust-bot-spec @<login>`. Same security rationale as the trust-boundary preamble in `/ai-driver:merge-pr` — machine-generated spec content should not implicitly drive destructive actions.
+
 ## [0.3.3] - 2026-04-20
 
 ### Added
