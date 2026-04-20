@@ -124,21 +124,26 @@ deploy/             — 可选的部署文档
 ```txt
 人写 spec → /ai-driver:run-spec
                   ↓
-      Phase 0: spec 审查 (Layer 0 grep + Claude + Codex)   ← 第 1/3 道门
+   Phase 0: spec 审查（Layer 0 grep + Claude + Codex，无条件）    ← 第 1/3 道门
                   ↓
-      Phase 1: plan 审查 (Codex 对抗读 plan)              ← 第 2/3 道门
+   Phase 1: plan 审查（Codex 对抗，仅当 Review Level ≥ B 才跑）    ← 第 2/3 道门（可选）
                   ↓
              AI 编码 + 测试 → PR
                   ↓
-             /ai-driver:review-pr                          ← 第 3/3 道门
-             (Claude + Codex + 已有 reviewer 三方共识)
+             /ai-driver:review-pr                                  ← 第 3/3 道门
+             （Claude + Codex + 已有 reviewer，三方共识）
                   ↓
              /ai-driver:merge-pr → GitHub Actions → tag + release
                   ↓
         人工测试 → issue → /ai-driver:fix-issues → PR → ...
 ```
 
-三门流水线（v0.3.6+）在最便宜的阶段夹断缺陷：spec 在 plan 之前、plan 在 code 之前、code 在 merge 之前。每道门都跑 Claude（会话内）+ Codex（外部），双方共识则升一级严重度。独立的 `/ai-driver:review-spec` 让你在切分支之前先对草稿 spec 做预检。
+三门流水线（v0.3.6+）在最便宜的阶段夹断缺陷：spec 在 plan 之前、plan 在 code 之前、code 在 merge 之前。**三道门的审查方式并不相同：**
+- **第 1 道门**（spec 审查）：Layer 0 机械 grep + Layer 1 Claude 会话内 + Layer 2 Codex 外部；两个 LLM 层共识则升一级严重度。**无条件**执行，不看 `Review Level`。
+- **第 2 道门**（run-spec 里的 plan 审查）：**可选** Codex-only 对抗，只在 spec 的 `Review Level` 为 `B` 或 `C` 时跑。无 Claude 层，也无双共识语义。
+- **第 3 道门**（PR 审查）：Claude Pass 1 + Codex Pass 2 + 摄取已有 reviewer 评论（Copilot/人工/bot），三方共识则升一级严重度。
+
+独立的 `/ai-driver:review-spec` 让你在切分支之前先对草稿 spec 做预检 — 跟第 1 道门同一套 Layer 0 + Layer 1 + Layer 2。
 
 ## 规范遵从
 

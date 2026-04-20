@@ -75,7 +75,7 @@ AI-driver commands do **not** hard-code a model or effort level — you stay in 
 | Command                 | Suggested session setting                                       |
 | ----------------------- | --------------------------------------------------------------- |
 | `/ai-driver:run-spec`   | Opus + `xhigh` effort (multi-step planning, TDD, orchestration) |
-| `/ai-driver:review-spec`| Opus + `xhigh` effort (adversarial reading of the spec) |
+| `/ai-driver:review-spec` | Opus + `xhigh` effort (adversarial reading of the spec) |
 | `/ai-driver:review-pr`  | Opus + `xhigh` effort (adversarial deep-read of the diff)       |
 | `/ai-driver:merge-pr`   | Sonnet or session default (deterministic: rewrite CHANGELOG, merge, tag) |
 | `/ai-driver:doctor`     | Haiku or session default (pure read-only — file checks + diff) |
@@ -124,21 +124,26 @@ Commands and language rules live inside the installed plugin, not in your projec
 ```txt
 Human writes spec → /ai-driver:run-spec
                          ↓
-            Phase 0: spec review  (Layer 0 grep + Claude + Codex)   ← gate 1/3
+    Phase 0: spec review  (Layer 0 grep + Claude + Codex, unconditional)   ← gate 1/3
                          ↓
-            Phase 1: plan review  (Codex adversarial on plan)       ← gate 2/3
+    Phase 1: plan review  (Codex adversarial, ONLY when Review Level ≥ B)  ← gate 2/3 (optional)
                          ↓
                   AI code + test → PR
                          ↓
-                  /ai-driver:review-pr                               ← gate 3/3
-                  (Claude + Codex + existing reviewer consensus)
+                  /ai-driver:review-pr                                     ← gate 3/3
+                  (Claude + Codex + existing reviewer, triple-consensus)
                          ↓
                   /ai-driver:merge-pr → GitHub Actions → tag + release
                          ↓
        Human tests → issue → /ai-driver:fix-issues → PR → ...
 ```
 
-The three-gate pipeline (v0.3.6+) catches defects at the cheapest stage: spec before plan, plan before code, code before merge. Each gate runs Claude (in-session) + Codex (external) with dual-consensus severity upgrades. Standalone `/ai-driver:review-spec` lets you pre-flight a draft spec without cutting a branch.
+The three-gate pipeline (v0.3.6+) catches defects at the cheapest stage: spec before plan, plan before code, code before merge. **The three gates are not identical:**
+- **Gate 1** (spec review) runs Layer 0 mechanical grep + Layer 1 Claude in-session + Layer 2 Codex external, with dual-consensus severity upgrade when both LLM layers agree. Unconditional — runs regardless of the spec's `Review Level`.
+- **Gate 2** (plan review inside `run-spec`) is an **optional** Codex-only adversarial pass, executed only when the spec's `Review Level` is `B` or `C`. No Claude pass, no dual-consensus semantics.
+- **Gate 3** (PR review) combines Claude Pass 1 + Codex Pass 2 + ingestion of existing reviewer comments (Copilot / humans / bots) for triple-consensus severity upgrades.
+
+Standalone `/ai-driver:review-spec` lets you pre-flight a draft spec without cutting a branch — same Layer 0 + Layer 1 + Layer 2 as Gate 1.
 
 ## Standards
 
