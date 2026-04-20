@@ -40,10 +40,17 @@ Run each rule against `SPEC_PATH`. Print `[PASS]` / `[FAIL]` per rule with line 
 | `S-SCENARIO` | ≥1 line matching `\*\*Given\*\*` AND ≥1 matching `\*\*When\*\*` AND ≥1 matching `\*\*Then\*\*` | Add at least one Given/When/Then scenario. |
 | `S-AC-COUNT` | ≥1 line matching `^- \[ \] AC-\d{3}:` | Add at least one AC-001 bullet. |
 | `S-AC-FORMAT` | Every `AC-` line strictly matches `^- \[ \] AC-\d{3}:` (no typos like `AC1`, `AC-1`, `AC-001 :`) | Normalize numbering to three digits: AC-001, AC-002, … |
-| `S-CLARIFY` | Zero `[NEEDS CLARIFICATION]` markers **outside inline code**. Inline-code matches (inside backticks) are excluded. Implementation: strip inline-code spans before searching — e.g., `sed 's/`[^`]*`//g' "$SPEC_PATH" \| grep -Fn '[NEEDS CLARIFICATION]'` returns 0 hits. | Resolve every open clarification before running; the spec author, not AI, decides these. |
+| `S-CLARIFY` | Zero `[NEEDS CLARIFICATION]` markers **outside inline code**. Inline-code matches (inside backticks) are excluded. See reference implementation below the table. | Resolve every open clarification before running; the spec author, not AI, decides these. |
 | `S-PLACEHOLDER` | Zero unresolved `<…>` angle-bracket placeholders inside `## Meta` or `## Goal` (other sections may legitimately use angle-bracket syntax e.g. `<spec-slug>` in prose) | Fill in template placeholders in Meta / Goal. |
 
 If any rule fails → print all failures, emit `LAYER0: FAIL`, exit 2. No Layer 1 or Layer 2 call. (The exception: if invoked as `/ai-driver:review-spec` standalone with no flag, Layer 0 failures are still fatal — spec review is the gate.)
+
+S-CLARIFY strip-inline-code reference implementation (fenced to avoid backtick-nesting ambiguity in Markdown):
+
+```bash
+sed 's/`[^`]*`//g' "$SPEC_PATH" | grep -Fn '[NEEDS CLARIFICATION]'
+# S-CLARIFY passes iff the above prints nothing (grep exits 1 on no match)
+```
 
 ## Layer 1: Claude in-session adversarial review
 
@@ -83,11 +90,22 @@ Save the findings as Markdown table under `## Layer 1 — Claude in-session adve
 Unless `--no-codex` is passed, run:
 
 ```bash
-codex exec --model gpt-5.4 -s read-only -c model_reasoning_effort=high \
+# 1. Load the literal prompt from "## Layer 2 prompt (literal)" below. Because
+#    the prompt is an audited, versioned string in this file, extract it
+#    deterministically rather than constructing it at runtime:
+CODEX_SPEC_REVIEW_PROMPT=$(awk '
+  /^### Layer 2 prompt \(literal\)$/ {capture=1; next}
+  capture && /^```$/ { if (opened) exit; opened=1; next }
+  capture && opened { print }
+' "${CLAUDE_PLUGIN_ROOT:-plugins/ai-driver}/commands/review-spec.md")
+
+# 2. Invoke Codex, piping the spec as <stdin> data (not as a prompt), with
+#    read-only sandbox and high reasoning:
+codex exec --model gpt-5.4 --config model_reasoning_effort="high" -s read-only \
   "$CODEX_SPEC_REVIEW_PROMPT" < "$SPEC_PATH"
 ```
 
-Where `$CODEX_SPEC_REVIEW_PROMPT` is the literal prompt from `## Layer 2 prompt (literal)` below. Timeout: `${CODEX_TIMEOUT_SEC:-180}` seconds.
+Timeout: `${CODEX_TIMEOUT_SEC:-180}` seconds. Flag form (`--config KEY="value"`) matches `/ai-driver:review-pr` §Pass 2 for consistency.
 
 On failure modes:
 - **Codex binary missing / auth failure / non-zero exit** → record `LAYER2: UNAVAILABLE (<reason>)`, continue with visible warning.

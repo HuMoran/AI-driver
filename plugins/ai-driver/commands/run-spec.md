@@ -34,7 +34,7 @@ Phase 0 is required for every run, regardless of the spec's `Review Level`. Revi
 
 **Gating summary:** Critical findings (any layer) STOP the run with `exit 2` — not overridable. High findings also STOP with `exit 2` unless `--accept-high` is passed. No branch is created and no implementation work begins when Phase 0 blocks.
 
-Phase 0 runs **before any git branch creation, directory creation, or file write**. A failed Phase 0 leaves the tree in exactly the state it was before the command was invoked.
+Phase 0 runs **before any git mutation or implementation write**. Do not create a branch, stage changes, or modify project files during Phase 0. Also, do not create `logs/<spec-slug>/` or write any Phase 0 artifacts until **after Layer 0 passes**. Once Layer 0 passes, the **only** allowed Phase 0 write is the review log under `logs/<spec-slug>/` (including `spec-review.md`). If Phase 0 ultimately fails before Layer 0 completes, no git state has been mutated and no files have been changed; if Phase 0 fails after Layer 0 passes, the only tree change is the review log.
 
 The review has three independent layers (Layer 0 mechanical → Layer 1 Claude → Layer 2 Codex). The same three-layer logic is also exposed as the standalone `/ai-driver:review-spec` command; shared prompts and gating live in that file and this section cross-references it.
 
@@ -49,10 +49,17 @@ Run each rule against the spec file. Report `[PASS]` / `[FAIL]` with line number
 | `S-SCENARIO` | ≥1 `**Given**`, ≥1 `**When**`, ≥1 `**Then**` line (scenario structure present) |
 | `S-AC-COUNT` | ≥1 line matching `^- \[ \] AC-\d{3}:` |
 | `S-AC-FORMAT` | Every `AC-` line strictly matches the three-digit pattern |
-| `S-CLARIFY` | Zero `[NEEDS CLARIFICATION]` markers **outside inline code**. Strip inline-code spans before matching: `sed 's/`[^`]*`//g' "$SPEC_PATH" \| grep -Fn '[NEEDS CLARIFICATION]'` must return 0 hits. |
+| `S-CLARIFY` | Zero `[NEEDS CLARIFICATION]` markers **outside inline code**. Strip inline-code spans before matching — see the fenced example under Layer 0 below. |
 | `S-PLACEHOLDER` | Zero unresolved `<…>` placeholders inside `## Meta` or `## Goal` |
 
 If any Layer 0 rule fails → print failures with fix hints, exit 2. **No Layer 1 or Layer 2 call.** No branch created, no logs directory created.
+
+S-CLARIFY strip-inline-code reference implementation:
+
+```bash
+sed 's/`[^`]*`//g' "$SPEC_PATH" | grep -Fn '[NEEDS CLARIFICATION]'
+# must print nothing (exit 1 from grep) for S-CLARIFY to pass
+```
 
 ### Layer 1: Claude in-session adversarial review
 
@@ -65,7 +72,7 @@ Findings are emitted as a Markdown table with columns: `Severity | rule_id | loc
 Run:
 
 ```bash
-codex exec --model gpt-5.4 -s read-only -c model_reasoning_effort=high \
+codex exec --model gpt-5.4 --config model_reasoning_effort="high" -s read-only \
   "$CODEX_SPEC_REVIEW_PROMPT" < "$SPEC_PATH"
 ```
 
@@ -92,7 +99,7 @@ Build a consensus table by `rule_id`. A finding raised by both Layer 1 and Layer
 | Medium | Interactive y/N prompt. Non-TTY → treat as N → `exit 2`. |
 | Low / Info | Print, continue. |
 
-On any STOP / exit 2: no branch was created, no implementation work began. The tree is unchanged (except for the spec-review.md log file).
+On any STOP / exit 2: no branch was created, and no implementation work began. If execution stops **during Layer 0**, the tree is fully unchanged (no log file, no directory). If Layer 0 completed and execution stops at a later gate (Layer 1 / Layer 2 / consensus), the only tree change is the review log at `logs/<spec-slug>/spec-review.md`.
 
 ## Phase 1: Prepare + Design Action Plan
 
