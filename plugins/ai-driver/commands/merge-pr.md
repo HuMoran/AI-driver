@@ -57,34 +57,44 @@ Record: `PR` (may be `<unresolved>` in auto-resolution dry-run), `NEXT` (unless 
 
 Exit 0 with the following output — and **zero** `gh` / `git fetch` / `git push` / `git ls-remote` invocations in the process tree:
 
+The dry-run output is **flag-aware** — every line below is conditional on what was actually passed:
+
 ```txt
 DRY RUN — no writes, no network calls, no git mutations
 --------------------------------------------------------
-PR: #<PR> ("<title>")    [or: <unresolved — would resolve via `gh pr list` at real-run time>]
-Next version: v<NEXT> (reason: <BUMP_REASON>)
-CHANGELOG.md rewrite:
-  --- before ---
-  ## [Unreleased]
-  <current body>
-  --- after ---
-  ## [Unreleased]
-  <empty>
-  ## [<NEXT>] - <today>
-  <current body>
-Manifest bumps (actual unified diff):
-  For .claude-plugin/marketplace.json and .claude-plugin/plugin.json:
-  1. Apply the same jq filters from Steps 2b / 2c to a tempfile.
-  2. Print `diff -u <original> <tempfile>`.
-  3. Delete tempfile. Do NOT touch the real manifest.
-  If a manifest is absent, print "<path>: (skipped — file not present)".
-  If a plugin.json is present but version field is absent, print:
-  "<path>: (skipped — no existing .version field to bump)".
+PR: #<PR> ("<title>")    [or: <unresolved — would resolve at real-run time>]
+
+[if --no-release is NOT set:]
+  Next version: v<NEXT> (reason: <BUMP_REASON>)
+  CHANGELOG.md rewrite:
+    --- before ---
+    ## [Unreleased]
+    <current body>
+    --- after ---
+    ## [Unreleased]
+    <empty>
+    ## [<NEXT>] - <today>
+    <current body>
+  Manifest bumps (actual unified diff):
+    For .claude-plugin/marketplace.json and .claude-plugin/plugin.json:
+    1. Apply the same jq filters from Steps 2b / 2c to a tempfile.
+    2. Print `diff -u <original> <tempfile>`.
+    3. Delete tempfile. Do NOT touch the real manifest.
+    If a manifest is absent, print "<path>: (skipped — file not present)".
+    If a plugin.json is present but version field is absent, print:
+    "<path>: (skipped — no existing .version field to bump)".
+
+[if --no-release IS set:]
+  Release steps: SKIPPED (--no-release)
+
 Planned commands:
-  git commit -m "chore(release): v<NEXT>"
-  git push origin <branch>
-  gh pr merge <PR> --merge --delete-branch
-  git tag v<NEXT> <merge-commit-sha>
-  git push origin v<NEXT>
+  [if --no-release is NOT set:]
+    git commit -m "chore(release): v<NEXT>"
+    git push origin <branch>
+  gh pr merge <PR> --merge --delete-branch      [or --squash if --squash was passed]
+  [if --no-release is NOT set:]
+    git tag v<NEXT> <merge-commit-sha>
+    git push origin v<NEXT>
 ```
 
 Exit 0. The real `CHANGELOG.md` is untouched: all rewriting in Step 2 happens in-memory / to a tempfile only.
