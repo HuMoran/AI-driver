@@ -1,0 +1,101 @@
+name: Template Sync
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/**'
+      - '.codex/**'
+      - 'constitution.md'
+      - 'CLAUDE.md'
+      - 'specs/_template.spec.md'
+      - 'specs/_template.spec.zh-CN.md'
+      - 'deploy/_template.deploy.md'
+      - 'deploy/_template.deploy.zh-CN.md'
+      - 'plugins/ai-driver/templates/**'
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify templates match repo files byte-for-byte
+        run: |
+          set -euo pipefail
+          # Pairs of "<repo-file>:<template-file>" that MUST stay byte-identical.
+          PAIRS=(
+            ".github/workflows/auto-release.yml:plugins/ai-driver/templates/.github/workflows/auto-release.yml"
+            ".github/workflows/ci.yml:plugins/ai-driver/templates/.github/workflows/ci.yml"
+            ".github/workflows/template-sync.yml:plugins/ai-driver/templates/.github/workflows/template-sync.yml"
+            ".codex/config.toml:plugins/ai-driver/templates/.codex/config.toml"
+            "constitution.md:plugins/ai-driver/templates/constitution.md"
+            "CLAUDE.md:plugins/ai-driver/templates/CLAUDE.md"
+            "specs/_template.spec.md:plugins/ai-driver/templates/specs/_template.spec.md"
+            "specs/_template.spec.zh-CN.md:plugins/ai-driver/templates/specs/_template.spec.zh-CN.md"
+            "deploy/_template.deploy.md:plugins/ai-driver/templates/deploy/_template.deploy.md"
+            "deploy/_template.deploy.zh-CN.md:plugins/ai-driver/templates/deploy/_template.deploy.zh-CN.md"
+          )
+          # Files intentionally allowed to diverge between repo root and templates.
+          # These are NOT checked by the byte-identity rule. Add here with a reason.
+          INTENTIONAL_EXEMPTIONS=(
+            "plugins/ai-driver/templates/AGENTS.md"  # repo-root describes the plugin source; template describes user-project usage
+          )
+
+          failed=0
+
+          # Check 1: every declared pair is in sync.
+          for p in "${PAIRS[@]}"; do
+            src="${p%%:*}"
+            tpl="${p##*:}"
+            if [ ! -f "$src" ] && [ ! -f "$tpl" ]; then
+              continue
+            fi
+            if [ ! -f "$src" ]; then
+              echo "::error file=$tpl::template exists but repo file $src is missing. Either create $src or remove $tpl from PAIRS."
+              failed=1
+              continue
+            fi
+            if [ ! -f "$tpl" ]; then
+              echo "::error file=$src::repo file exists but template $tpl is missing. Run: cp \"$src\" \"$tpl\""
+              failed=1
+              continue
+            fi
+            if ! cmp -s "$src" "$tpl"; then
+              echo "::error file=$tpl::out of sync with $src. Run: cp \"$src\" \"$tpl\""
+              diff -u "$src" "$tpl" | head -40 || true
+              failed=1
+            fi
+          done
+
+          # Check 2: completeness — every template file that has a repo-root counterpart
+          # must be in PAIRS (or explicitly exempt). Catches newly added templates the
+          # maintainer forgot to wire into PAIRS.
+          # Build a lookup of declared template paths.
+          declared=$(printf '%s\n' "${PAIRS[@]}" | awk -F: '{print $2}')
+          exempt=$(printf '%s\n' "${INTENTIONAL_EXEMPTIONS[@]}")
+
+          while IFS= read -r tpl; do
+            rel="${tpl#plugins/ai-driver/templates/}"
+            # Only check files that have a repo-root counterpart at the mirrored path.
+            if [ -f "$rel" ]; then
+              if printf '%s\n' "$declared" | grep -Fxq "$tpl"; then
+                continue
+              fi
+              if printf '%s\n' "$exempt" | grep -Fxq "$tpl"; then
+                continue
+              fi
+              echo "::error file=$tpl::mirrored file has a repo-root counterpart ($rel) but is not in PAIRS or INTENTIONAL_EXEMPTIONS. Add the pair to .github/workflows/template-sync.yml, or document the divergence in INTENTIONAL_EXEMPTIONS."
+              failed=1
+            fi
+          done < <(find plugins/ai-driver/templates -type f | sort)
+
+          if [ "$failed" -eq 1 ]; then
+            echo ""
+            echo "Template files must stay byte-identical with the repo files they mirror."
+            echo "The plugin ships the template copies to user projects via /ai-driver:init."
+            echo "If a repo file and its template intentionally diverge, add the template path to"
+            echo "INTENTIONAL_EXEMPTIONS in .github/workflows/template-sync.yml (and mirror that change)."
+            exit 1
+          fi
+
+          echo "All template pairs are in sync; no undeclared mirrored templates."
