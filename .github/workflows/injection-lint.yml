@@ -1,0 +1,22 @@
+name: Injection Lint
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run injection-lint
+        run: bash .github/scripts/injection-lint.sh
+
+      - name: Run regression harness
+        run: |
+          if [ -x tests/injection-lint-cases/run.sh ]; then
+            bash tests/injection-lint-cases/run.sh
+          else
+            echo "::notice::injection-lint-cases harness missing — skipping"
+          fi

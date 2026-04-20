@@ -24,9 +24,23 @@ The `Meta` section only contains `Date` and `Review Level` — no identity field
 
 ## Pre-flight
 
-1. Read the spec file at `$ARGUMENTS`.
-2. Read `${CLAUDE_PLUGIN_ROOT}/rules/*.md` files relevant to this project's language.
-3. Compute `SPEC_SLUG` from `$ARGUMENTS` (see convention above). Do not create any directory yet.
+1. **Path gate.** `$ARGUMENTS` must start with `specs/` (or `./specs/`) and resolve to a regular file ending in `.spec.md`. Reject anything else — this refuses paths outside the spec directory, closing the fixture-mistakenly-loaded-as-spec attack class (see `tests/injection-fixtures/bot-authored-spec-without-flag.md`). Enforcement:
+
+   ```bash
+   case "$ARGUMENTS" in
+     specs/*|./specs/*) ;;
+     *) echo "ERROR: spec path must be under specs/ (got: $ARGUMENTS)" >&2; exit 2 ;;
+   esac
+   case "$ARGUMENTS" in
+     *.spec.md) ;;
+     *) echo "ERROR: spec file must end in .spec.md (got: $ARGUMENTS)" >&2; exit 2 ;;
+   esac
+   [ -f "$ARGUMENTS" ] || { echo "ERROR: spec not found: $ARGUMENTS" >&2; exit 2; }
+   ```
+
+2. Read the spec file at `$ARGUMENTS`.
+3. Read `${CLAUDE_PLUGIN_ROOT}/rules/*.md` files relevant to this project's language.
+4. Compute `SPEC_SLUG` from `$ARGUMENTS` (see convention above). Do not create any directory yet.
 
 ## Phase 0: Spec Review (MANDATORY — unconditional)
 
