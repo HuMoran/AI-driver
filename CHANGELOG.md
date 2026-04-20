@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.3.8] - 2026-04-20
+
+### Changed (BREAKING — architecture of all three review gates)
+
+- **All three review gates run Claude in a sandboxed subagent, not the main session.** `/ai-driver:run-spec` Phase 0 Layer 1 (Gate 1 spec review), Phase 1 Plan Review (Gate 2), and `/ai-driver:review-pr` Pass 1 (Gate 3) now spawn a dedicated subagent with `allowed-tools: Read, Grep, Glob` — no Write, no network, no nested spawn. The main session passes only paths; the subagent reads artifacts from disk. Rationale: untrusted content (spec body, plan text, PR diff, reviewer comments) never enters the main session's context, so prompt-injection attacks have nothing to inject into. Each subagent prompt also bounds its filesystem reads to an explicit allow-list and forbids nested spawn.
+- **Gate 2 (plan review) becomes dual-LLM.** Previously Codex-only; now runs a Claude subagent alongside Codex, symmetric with Gate 1 and Gate 3. Gating unchanged (Review Level ≥ B). Consensus upgrades on findings keyed by `rule_id + normalized location` (±3-line fuzz for Codex line drift).
+- **Gate 3 (PR review) uses stage-then-read ingestion.** The main session creates a per-run `mktemp -d` tempdir with `chmod 700`, disables shell tracing (`set +x`), and fetches PR artifacts with BOTH stdout AND stderr redirected (`gh ... > "$STAGE/<artifact>" 2> "$STAGE/<artifact>.err"`). Fetches are wrapped in a `fetch` helper that fail-closes on non-zero exit — no subagent is spawned if any fetch errored. The subagent then reads the staged files. This closes the stderr-leak variant of the trust-boundary gap that would otherwise let `gh` error text carry attacker-controlled response fragments into the main session.
+- **Path gate extended to PR-body-derived spec paths.** When a PR body names a `specs/**/*.spec.md` file (for cross-reference in Pass 1), the candidate path is extracted deterministically to a staged file via `jq ... > $STAGE/candidate-spec-paths.txt` (no body-byte interpolation into the main session), then validated by the same v0.3.7 path gate that `/ai-driver:run-spec` uses — reject `..`, canonicalize via `pwd -P`, confirm under `$(cd specs && pwd -P)/`. A hostile PR referencing `specs/../etc/passwd` fails closed at the gate.
+- **Return-channel sanitization** on all subagent output: `message` and `fix_hint` cells capped at 200 chars, other cells at 100 chars (truncate with `…`); pipe (`|`) and backtick (`` ` ``) characters escaped in every cell; malformed subagent output produces exactly one finding with the **fixed-literal** message `"subagent returned non-table output; see <log-location>:<line-range>"` (never verbatim subagent bytes). The raw subagent output is saved to the review log for post-hoc inspection but never returns to the main session's conversation.
+- **Codex invocations use Claude Code's tracked-background pattern** (`Bash(run_in_background=true)`). Forbidden: `nohup codex ... &`. Tracked-background dispatches deliver a completion notification to the main session's next turn automatically; the output is read via `BashOutput`. This fixes a real workflow bug observed mid-spec-revision: `nohup` backgrounds are untracked, and an operator (human or AI) can forget to poll and silently skip past a High/Critical finding.
+- **Degraded-mode contract** is identical across all three gates: on Claude-pass failure the review log records the literal line `CLAUDE-PASS: UNAVAILABLE (<reason>)`; on malformed output, `CLAUDE-PASS: PARSE_ERROR` plus the fixed-literal `parse-error` finding row. Log locations: `logs/<spec-slug>/spec-review.md` (Gate 1), `logs/<spec-slug>/plan-review.md` (Gate 2), and a `### Degraded-mode notes` section in the PR review body (Gate 3).
+
+### Changed
+
+- `/ai-driver:review-spec` frontmatter `allowed-tools` adds `Agent` (to permit one subagent spawn) while keeping the v0.3.6 lockdown of `Write` and `Bash(mkdir:*)` — the command remains non-mutating at the tool-permission layer.
+- `AGENTS.md` three-gate paragraph names subagent isolation + stage-then-read + return-channel sanitization as the **enforcement mechanisms**, not synonyms for "trust boundary".
+- `README.md` + `README.zh-CN.md` workflow diagrams redrawn: all three gates dual-LLM, no "Codex-only" label remains.
+
+### Governance proposal — R-009
+
+This release proposes a new operational rule:
+
+> **R-009: Review Runs In A Sandbox Executor (from P1, P4).** Every AI review in this framework MUST run inside a sandboxed executor — a Claude Code subagent for the in-session Claude pass, `codex exec` for the external pass. Main-session inline review is prohibited. When a reviewer needs untrusted external data (PR bodies, issue threads, reviewer comments), the main session stages it to files via shell redirects; it never interpolates the raw content into its own prompt.
+
+Amendment to `constitution.md` requires explicit maintainer approval per governance. Proposed in this PR's body; landing as a separate commit on the same PR after approval.
+
 ## [0.3.7] - 2026-04-20
 
 ### Added
