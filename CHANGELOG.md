@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.3.4] - 2026-04-20
+
 ### Changed
 
 - `/ai-driver:review-pr` now reads the **entire existing conversation** on the PR — reviews, inline line comments, and issue-style comments — before running Claude Pass 1 and Codex Pass 2. Existing findings from Copilot, human reviewers, and other bots are passed to both AI passes as context. The final report has a dedicated **Existing reviewer findings** table, an **Also flagged by** column for AI findings that match what an existing reviewer already said, and a **Prior-finding resolution** table when a previous `<!-- ai-driver-review -->` comment exists on the PR. This closes the silent loss of Copilot / human findings observed across v0.2 and v0.3 PRs.
