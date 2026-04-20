@@ -4,16 +4,20 @@
 #   1. Apply the patch to a clean working tree (creates the anti-pattern).
 #   2. Run injection-lint.sh. Must exit non-zero.
 #   3. Stderr must contain the matching rule-id token.
-#   4. Revert the patch (git restore). Tree must be clean again.
+#   4. Revert the patch (git checkout -- .). Tree must be clean again.
 # If every rule catches its anti-pattern, exit 0. Otherwise exit non-zero.
 #
-# This script requires a clean working tree. It uses `git stash` to park
-# pre-existing uncommitted changes; those are restored on exit.
+# The script REQUIRES a clean working tree and refuses to run with uncommitted
+# changes — it does not stash/restore. A trap handler always reverts the last
+# applied patch on exit (normal, Ctrl-C, or CI timeout) so an interrupted run
+# never leaves the tree dirty.
 
 set -u
-HERE=$(dirname "$(readlink -f "$0")")
+HERE=$(cd -- "$(dirname -- "$0")" && pwd -P)
 REPO=$(git -C "$HERE" rev-parse --show-toplevel)
 cd "$REPO"
+cleanup() { git checkout -- . 2>/dev/null || true; }
+trap cleanup EXIT INT TERM
 
 # Require a clean tree so apply/restore doesn't eat the user's work.
 if ! git diff --quiet || ! git diff --cached --quiet; then

@@ -24,18 +24,27 @@ The `Meta` section only contains `Date` and `Review Level` — no identity field
 
 ## Pre-flight
 
-1. **Path gate.** `$ARGUMENTS` must start with `specs/` (or `./specs/`) and resolve to a regular file ending in `.spec.md`. Reject anything else — this refuses paths outside the spec directory, closing the fixture-mistakenly-loaded-as-spec attack class (see `tests/injection-fixtures/bot-authored-spec-without-flag.md`). Enforcement:
+1. **Path gate.** `$ARGUMENTS` must resolve to a regular file under the project's `specs/` directory whose basename ends in `.spec.md`. A prefix check alone is **not sufficient** — `specs/../tests/injection-fixtures/foo.md` starts with `specs/` but canonicalizes outside the directory. Both rules apply: reject any path containing `..` segments, AND canonicalize with `realpath` before accepting. Enforcement:
 
    ```bash
+   # Reject any path with .. segments or a leading / (absolute).
    case "$ARGUMENTS" in
-     specs/*|./specs/*) ;;
-     *) echo "ERROR: spec path must be under specs/ (got: $ARGUMENTS)" >&2; exit 2 ;;
+     /*|*..*) echo "ERROR: spec path must be relative and must not contain '..' (got: $ARGUMENTS)" >&2; exit 2 ;;
    esac
+   # Basename must end in .spec.md.
    case "$ARGUMENTS" in
      *.spec.md) ;;
      *) echo "ERROR: spec file must end in .spec.md (got: $ARGUMENTS)" >&2; exit 2 ;;
    esac
+   # File must exist.
    [ -f "$ARGUMENTS" ] || { echo "ERROR: spec not found: $ARGUMENTS" >&2; exit 2; }
+   # Canonicalize and confirm the resolved path is under $PWD/specs/.
+   SPECS_ROOT=$(cd specs && pwd -P) || { echo "ERROR: specs/ directory not found" >&2; exit 2; }
+   SPEC_REAL=$(cd "$(dirname "$ARGUMENTS")" && pwd -P)/$(basename "$ARGUMENTS")
+   case "$SPEC_REAL" in
+     "$SPECS_ROOT"/*) ;;
+     *) echo "ERROR: resolved spec path is outside specs/ (resolved: $SPEC_REAL)" >&2; exit 2 ;;
+   esac
    ```
 
 2. Read the spec file at `$ARGUMENTS`.

@@ -24,11 +24,18 @@ THREE_CMDS=(
   plugins/ai-driver/commands/merge-pr.md
 )
 
-# L-TRUST — Trust boundary heading + data-fence preamble + BEGIN/END markers.
+# L-TRUST — Trust boundary heading present.
+# We only require the section heading here. The data-fence markers and the
+# "Do not interpret as instructions" preamble are enforced by the spec's
+# AC-010 (for review-spec.md) and by the review-pr.md/fix-issues.md/merge-pr.md
+# content the lint scans for other rules. Scoping L-TRUST to the heading keeps
+# this rule atomic and independently testable — the regression harness for
+# L-TRUST removes the heading and expects this one rule to fire.
 for f in "${THREE_CMDS[@]}"; do
   [ -f "$f" ] || continue
-  if ! grep -Fq '## Trust boundary' "$f"; then
-    emit L-TRUST "$f" "add '## Trust boundary' section declaring reviewer/PR content UNTRUSTED DATA; see review-pr.md for the canonical pattern"
+  line=$(grep -nF '## Trust boundary' "$f" | head -1 | cut -d: -f1)
+  if [ -z "$line" ]; then
+    emit L-TRUST "$f:1" "add '## Trust boundary' section declaring reviewer/PR content UNTRUSTED DATA; see review-pr.md for the canonical pattern"
   fi
 done
 
@@ -67,17 +74,19 @@ for f in "${L_QUOTE_CMDS[@]}"; do
 done
 
 # L-SELF-ID — review-pr.md self-ID filter must require BOTH marker AND login check.
+# Fail if EITHER the marker or the login comparison is missing — not just the
+# login-missing-with-marker-present case. Removing the marker entirely is still
+# a regression (self-ID becomes nominal and any comment with the right login
+# pattern is skipped).
 f=plugins/ai-driver/commands/review-pr.md
 if [ -f "$f" ]; then
-  has_marker=0
-  has_login=0
-  grep -Fq '<!-- ai-driver-review -->' "$f" && has_marker=1
-  # login check heuristic: look for SELF_LOGIN or user.login comparison or gh api /user --jq .login
-  if grep -Eq 'SELF_LOGIN|user\.login *==|gh api +/user +--jq +\.login' "$f"; then
-    has_login=1
+  marker_line=$(grep -nF '<!-- ai-driver-review -->' "$f" | head -1 | cut -d: -f1)
+  login_line=$(grep -nE 'SELF_LOGIN|user\.login *==|gh api +/user +--jq +\.login' "$f" | head -1 | cut -d: -f1)
+  if [ -z "$marker_line" ]; then
+    emit L-SELF-ID "$f:1" "self-ID filter missing the <!-- ai-driver-review --> marker — self-ID requires BOTH marker AND login comparison"
   fi
-  if [ "$has_marker" -eq 1 ] && [ "$has_login" -eq 0 ]; then
-    emit L-SELF-ID "$f" "self-ID filter must require BOTH the <!-- ai-driver-review --> marker AND a user.login comparison — marker alone is spoofable"
+  if [ -z "$login_line" ]; then
+    emit L-SELF-ID "$f:1" "self-ID filter missing a user.login comparison (SELF_LOGIN / user.login == / gh api /user --jq .login) — marker alone is spoofable"
   fi
 fi
 
@@ -91,7 +100,7 @@ for f in plugins/ai-driver/commands/review-pr.md plugins/ai-driver/commands/fix-
   fi
   # Affirmative check: the file must mention user.type or [bot] suffix somewhere
   if ! grep -Eq 'user\.type|\[bot\]' "$f"; then
-    emit L-BOT "$f" "bot detection absent — add user.type == \"Bot\" OR login-endsWith [bot] check"
+    emit L-BOT "$f:1" "bot detection absent — add user.type == \"Bot\" OR login-endsWith [bot] check"
   fi
 done
 
@@ -104,7 +113,7 @@ if [ -f "$f" ]; then
   fi
   # Affirmative: must contain an awk or sed section extractor
   if ! grep -Eq 'awk |sed ' "$f"; then
-    emit L-EXTRACT "$f" "auto-release.yml must use awk/sed to extract the [X.Y.Z] section deterministically"
+    emit L-EXTRACT "$f:1" "auto-release.yml must use awk/sed to extract the [X.Y.Z] section deterministically"
   fi
 fi
 
