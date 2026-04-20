@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.3.6] - 2026-04-20
+
 ### Added
 
 - **Phase 0 mandatory spec review** in `/ai-driver:run-spec`, running **before** any branch creation, commit, tag, push, or file write outside `logs/<spec-slug>/`. Three independent layers execute in order: **Layer 0** (mechanical grep lint — 7 structural rules `S-META`, `S-GOAL`, `S-SCENARIO`, `S-AC-COUNT`, `S-AC-FORMAT`, `S-CLARIFY`, `S-PLACEHOLDER`, sub-second, no LLM), **Layer 1** (Claude in-session adversarial using a literal audited prompt + data-fence trust boundary), **Layer 2** (Codex external adversarial via `codex exec -s read-only`). Gating: Critical any-layer → STOP `exit 2` (not overridable); High → STOP unless `--accept-high`; Medium → interactive y/N; Low/Info → note and continue. Findings follow the stable schema `severity | rule_id | location | message | fix_hint` and are written to `logs/<spec-slug>/spec-review.md` with a dual-raised consensus table. The review is **unconditional** — it does not respect the spec's `Review Level` field (Review Level governs downstream effort; spec review governs input correctness). Closes the last upstream gap in the three-gate workflow (**spec review → plan review → PR review**).
