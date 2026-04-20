@@ -1,0 +1,12 @@
+diff --git a/plugins/ai-driver/commands/review-pr.md b/plugins/ai-driver/commands/review-pr.md
+index f9a2661..e057222 100644
+--- a/plugins/ai-driver/commands/review-pr.md
++++ b/plugins/ai-driver/commands/review-pr.md
+@@ -20,6 +20,7 @@ If no PR number is given, find the PR for the current branch.
+ ### 2a. Basic PR metadata + diff
+ 
+ ```bash
++if (u.login.startsWith("copilot-")) {}
+ gh pr view <number> --json body,title,url,headRefName,baseRefName
+ gh pr diff <number>
+ ```

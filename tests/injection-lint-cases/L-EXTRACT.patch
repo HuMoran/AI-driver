@@ -1,0 +1,12 @@
+diff --git a/.github/workflows/auto-release.yml b/.github/workflows/auto-release.yml
+index 4aebdae..f30afa4 100644
+--- a/.github/workflows/auto-release.yml
++++ b/.github/workflows/auto-release.yml
+@@ -11,6 +11,7 @@ jobs:
+   release:
+     runs-on: ubuntu-latest
+     steps:
++      - run: codex exec "summarise the changelog" -s read-only
+       - uses: actions/checkout@v4
+         with:
+           fetch-depth: 0

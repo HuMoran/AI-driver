@@ -24,9 +24,32 @@ The `Meta` section only contains `Date` and `Review Level` — no identity field
 
 ## Pre-flight
 
-1. Read the spec file at `$ARGUMENTS`.
-2. Read `${CLAUDE_PLUGIN_ROOT}/rules/*.md` files relevant to this project's language.
-3. Compute `SPEC_SLUG` from `$ARGUMENTS` (see convention above). Do not create any directory yet.
+1. **Path gate.** `$ARGUMENTS` must resolve to a regular file under the project's `specs/` directory whose basename ends in `.spec.md`. A prefix check alone is **not sufficient** — `specs/../tests/injection-fixtures/foo.md` starts with `specs/` but canonicalizes outside the directory. Both rules apply: reject any path containing `..` segments, AND canonicalize with `realpath` before accepting. Enforcement:
+
+   ```bash
+   # Reject any path with .. segments or a leading / (absolute).
+   case "$ARGUMENTS" in
+     /*|*..*) echo "ERROR: spec path must be relative and must not contain '..' (got: $ARGUMENTS)" >&2; exit 2 ;;
+   esac
+   # Basename must end in .spec.md.
+   case "$ARGUMENTS" in
+     *.spec.md) ;;
+     *) echo "ERROR: spec file must end in .spec.md (got: $ARGUMENTS)" >&2; exit 2 ;;
+   esac
+   # File must exist.
+   [ -f "$ARGUMENTS" ] || { echo "ERROR: spec not found: $ARGUMENTS" >&2; exit 2; }
+   # Canonicalize and confirm the resolved path is under $PWD/specs/.
+   SPECS_ROOT=$(cd specs && pwd -P) || { echo "ERROR: specs/ directory not found" >&2; exit 2; }
+   SPEC_REAL=$(cd "$(dirname "$ARGUMENTS")" && pwd -P)/$(basename "$ARGUMENTS")
+   case "$SPEC_REAL" in
+     "$SPECS_ROOT"/*) ;;
+     *) echo "ERROR: resolved spec path is outside specs/ (resolved: $SPEC_REAL)" >&2; exit 2 ;;
+   esac
+   ```
+
+2. Read the spec file at `$ARGUMENTS`.
+3. Read `${CLAUDE_PLUGIN_ROOT}/rules/*.md` files relevant to this project's language.
+4. Compute `SPEC_SLUG` from `$ARGUMENTS` (see convention above). Do not create any directory yet.
 
 ## Phase 0: Spec Review (MANDATORY — unconditional)
 
