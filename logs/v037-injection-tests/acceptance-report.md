@@ -21,7 +21,14 @@ All 16 ACs evaluated against commit HEAD. Every AC is a runnable shell expressio
 | AC-015 | PASS | `injection-lint.yml` workflow has no LLM invocation |
 | AC-016 | PASS | all guardrail tokens (`Trust boundary`, `SELF_LOGIN`, `user.type`, `-s read-only`, `--paginate`, `BEGIN SPEC`) still present across 5 commands |
 
-**Summary: 16/16 PASS.**
+**Summary: 18/18 PASS** (expanded from 16 after Codex Round 2 findings; 2 new ACs for threat-model structure + gitattributes; 4 existing ACs tightened).
+
+| Added in Round 2 | Purpose |
+|---|---|
+| AC-017 | Threat-model structure (anchors + Out-of-scope section) |
+| AC-018 | `.gitattributes` does not mask fixtures |
+
+See `spec-review-round2.md` for the full disposition.
 
 ## Spec review rounds (Phase 0 dogfood)
 
