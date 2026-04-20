@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.3.9] - 2026-04-20
+
+### Changed
+
+- `constitution.md` adds **R-009: Review Runs In A Sandbox Executor** (proposed in PR #11, approved by @HuMoran in PR #11 comment thread on 2026-04-20, landed via PR #12 post-v0.3.8). Codifies the v0.3.8 behavioural contract at constitutional authority: every AI review MUST run inside a sandboxed executor (Claude subagent for in-session, `codex exec` for external), main-session inline review is prohibited, untrusted external data is staged to files and handed to the subagent by path. Template pair (`plugins/ai-driver/templates/constitution.md`) mirrored so user projects pick up the rule on `claude plugin update`. No code change — v0.3.8 command docs already enforce R-009.
+
 ## [0.3.8] - 2026-04-20
 
 ### Changed (BREAKING — architecture of all three review gates)
