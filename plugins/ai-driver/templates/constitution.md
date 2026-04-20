@@ -80,6 +80,21 @@ implementation. Input gating is strictly cheaper than downstream correction.
 Enforcement: `/ai-driver:run-spec` exits 2 on any Critical finding. High findings
 require explicit `--accept-high` flag with rationale logged.
 
+### R-009: Review Runs In A Sandbox Executor (from P1, P4)
+Every AI review in this framework MUST run inside a sandboxed executor — a Claude Code
+subagent for the in-session Claude pass, `codex exec` for the external pass.
+Main-session inline review is prohibited. When a reviewer needs untrusted external
+data (PR bodies, issue threads, reviewer comments), the main session stages it to
+files via shell redirects; it never interpolates the raw content into its own prompt.
+Rationale: isolates untrusted-data contamination at the tool layer (defense-in-depth
+over the data-fence prose) and separates the implementer role from the reviewer role
+so implementation bias does not mask defects.
+Enforcement: subagent `allowed-tools` is exactly `Read, Grep, Glob` — no Write, no
+network, no nested `Agent`/`Task` spawn. Codex invocations use Claude Code's
+`Bash(run_in_background=true)`; `nohup codex … &` is forbidden. Return-channel
+sanitization (length caps + `|` / `` ` `` escape + fixed-literal `parse-error`
+message) prevents a compromised subagent from smuggling attacker bytes back.
+
 ## Standards
 
 - Changelog: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
