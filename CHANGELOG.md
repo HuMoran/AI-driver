@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-04-20
+
 ### Added
 
 - `.github/workflows/template-sync.yml` enforces that every file shipped as a plugin template (workflows, `.codex/config.toml`, spec/deploy templates) stays byte-identical with its repo-root counterpart. Any PR that edits only one side of a pair fails with a `cp` command to fix it. Caught 2 pre-existing drifts (deploy templates) on first run.
