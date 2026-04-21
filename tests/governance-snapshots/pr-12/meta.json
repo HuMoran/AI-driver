@@ -1,0 +1,11 @@
+{
+  "number": 12,
+  "baseRefName": "main",
+  "body": "## Summary\n\nFixes a typo in the governance section of constitution.md.\n",
+  "files": [
+    "AGENTS.md",
+    "CHANGELOG.md",
+    "constitution.md"
+  ],
+  "admin_allowlist": ["HuMoran"]
+}

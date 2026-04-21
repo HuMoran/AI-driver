@@ -12,6 +12,7 @@
 # and exits 0 iff stdout matches expected.txt.
 
 set -eu
+set -o pipefail
 
 if [ "$#" -ne 1 ]; then
   echo "usage: $0 <snapshot-dir>" >&2
@@ -29,10 +30,9 @@ COMMITS=$DIR/branch-commits.json
 
 BODY=$(jq -r '.body' "$META")
 FILES=$(jq -r '.files[]' "$META")
-ALLOWLIST=$(jq -r '.admin_allowlist[]' "$META")
 
 # 1. Body proposal detection: regex ^####?\s+R-[0-9]+:|^\*\*R-[0-9]+:
-PROPOSALS=$(printf '%s\n' "$BODY" | grep -Eo '^####?[[:space:]]+R-[0-9]+:|^\*\*R-[0-9]+:' | grep -Eo 'R-[0-9]+' | sort -u)
+PROPOSALS=$(printf '%s\n' "$BODY" | grep -Eo '^####?[[:space:]]+R-[0-9]+:|^\*\*R-[0-9]+:' | grep -Eo 'R-[0-9]+' | sort -u || true)
 
 # 2. File trigger: constitution.md or templates/constitution.md changed
 FILE_TRIGGER=no
