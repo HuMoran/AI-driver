@@ -35,10 +35,11 @@ v0.3.10 就补这个缺口 —— 一个最小、可靠、grep-级别的 preflig
 
 **Acceptance Scenarios:**
 
-1. **Given** PR body 含 `R-NNN` 提议（行首匹配 `^####?\s+R-[0-9]+:` 或 `^\*\*R-[0-9]+:`），且 issue-comments 里有 admin/maintainer 身份作者的首行（去除前导 `> ` 引用和 fenced code block 后）匹配 `^(approve|同意)\s*R-NNN\b` 的评论，且 branch 上 `git log main..HEAD -- constitution.md` 有 subject 匹配 `^docs\(constitution\): add R-NNN ` 的 commit，**When** merge-pr 跑，**Then** 正常 proceed。
+1. **Given** PR body 含 `R-NNN` 提议（行首匹配 `^####?\s+R-[0-9]+:` 或 `^\*\*R-[0-9]+:`），且 issue-comments 里有 admin/maintainer 身份作者的首行（去除前导 `^\s*>` 引用和 fenced code block 后）匹配 `^(approve|同意)\s*R-NNN\b` 的评论，且 branch 上针对 PR base ref 的 `git log origin/<base>..HEAD -- constitution.md` 有 subject 匹配 `^docs\(constitution\): add R-NNN ` 的 commit，**When** merge-pr 跑，**Then** 正常 proceed。
 2. **Given** 有提议、无审批评论，**When** merge-pr 跑，**Then** abort：`ERROR: R-NNN proposed in PR body but no "approve R-NNN" / "同意R-NNN" comment found from an admin/maintainer. Obtain approval first, or remove the R-NNN block from the PR body before merging.`
 3. **Given** 有提议、有审批、但 branch 上无修宪 commit，**When** merge-pr 跑，**Then** abort：`ERROR: R-NNN approved by @<login> but no "docs(constitution): add R-NNN ..." commit on this branch. Add the commit now, or pass --defer "<rationale>" to defer the amendment to a follow-up PR (v0.3.9 shape).`
 4. **Given** 传了 `--defer "<rationale>"` 且 rationale ≤ 200 char 无换行，**When** merge-pr 跑，**Then** 合并前向 PR 追加一条 comment `<!-- ai-driver-defer:R-NNN --> Governance deferral: <rationale>` 后 proceed。Rationale 超长或含换行 → abort at Step 0（no writes）。
+5. **Given** PR 改了 `constitution.md` 或 `plugins/ai-driver/templates/constitution.md` 但 body 没有 `R-NNN` 提议块（"body 丢失"的反向事故），**When** merge-pr 跑，**Then** abort：`ERROR: this PR changes constitution.md ... but the PR body does not contain an R-NNN proposal block. ...`
 
 **Independent Test Method**：把 PR #11（v0.3.9 真实事故）的 body + comments 快照喂给 preflight check，确认 Scenario 2 / 3 的 abort 命中；再喂 PR #8（R-008 正常合并的 case），确认 Scenario 1 proceed。
 
@@ -63,10 +64,13 @@ v0.3.10 就补这个缺口 —— 一个最小、可靠、grep-级别的 preflig
 
 ### MUST
 
-- MUST-001: merge-pr Step 0 preflight 检测 PR body `R-NNN` 提议，使用 regex `^####?\s+R-[0-9]+:|^\*\*R-[0-9]+:`。检测到即进入 governance mode。
+- MUST-001: merge-pr Step 0 preflight 以**两个并列触发条件**进入 governance mode —— 任一满足即视为治理 PR：
+  - **Body 触发**：PR body 匹配 `^####?\s+R-[0-9]+:|^\*\*R-[0-9]+:` 的行（提议块）。
+  - **File 触发**：PR 的 changed files 列表（`gh pr view <N> --json files --jq '.files[].path'`）含 `constitution.md` 或 `plugins/ai-driver/templates/constitution.md` —— 即修宪内容本身被改动。
+  File 触发下若 body 无对应 proposal，视为"body 丢失的治理 PR"，强制 abort：`ERROR: this PR changes constitution.md (or its template mirror) but the PR body does not contain an R-NNN proposal block. Either add the proposal block to the PR body and re-request approval, or revert the constitution changes.` —— 防止"偷偷改宪法文件"的反向事故（与 v0.3.9 方向相反的失误模式）。
 - MUST-002: 审批语法是**规则作用域的双语接受**。去除 blockquote + fence 后的 comment 首个非空行必须匹配 `^\s*(approve|同意)\s*R-NNN\b.*$`（大小写不敏感、首尾空白忽略）。bare `approve` / `同意` 不带规则号不算审批。
 - MUST-003: 审批作者 allowlist 从 `gh api --paginate /repos/{owner}/{repo}/collaborators` 取，保留 `role_name` 为 `admin` 或 `maintain` 的 `.login`。非允许列表作者的审批评论当普通留言处理。
-- MUST-004: amendment commit 检测 —— branch 上 `git log --format='%H %s' main..HEAD -- constitution.md` 必须存在至少一个 commit 其 subject 匹配 `^docs\(constitution\): add R-NNN `（字面 R-NNN 同号）。
+- MUST-004: amendment commit 检测 —— 用 PR 的 base ref（`gh pr view <N> --json baseRefName --jq .baseRefName`，不假设总是 `main`），先 `git fetch origin <base>`，然后 `git log --format='%H %s' "origin/<base>..HEAD" -- constitution.md` 必须存在至少一个 commit 其 subject 匹配 `^docs\(constitution\): add R-NNN `（字面 R-NNN 同号，后缀自由）。后缀部分（如 `— approved by @X in PR #N`）是 **advisory**：AGENTS.md 建议的格式，但 preflight 不强制匹配，避免 PR 编号/作者手误导致合法修宪被误拦。
 - MUST-005: 三条件（提议 + 审批 + commit）缺一即 abort，错误消息按 Scenario 1 AC-2 / AC-3 字面。`--defer "<rationale>"` 仅适用于"审批有、commit 无"这一种情况；其他缺失不允许 flag 绕过。
 - MUST-006: `--defer` rationale 清洗：≤ 200 字符、单行（无 `\n`/`\r`）、转义 `` ` ``、`|`、`$`、`<`、`>`、反斜杠、引号 `"` `'` 后 interpolate 进 PR comment。超长或含换行 → Step 0 abort，无写入。
 
@@ -80,7 +84,7 @@ v0.3.10 就补这个缺口 —— 一个最小、可靠、grep-级别的 preflig
 
 每条 AC 是可执行 shell 表达式，非零退出即失败。
 
-- [ ] AC-001: merge-pr.md Step 0 preflight 明确 grep PR body 找 `R-NNN` 提议。`grep -Eq 'R-\[0-9\]\+|governance.*check|constitution.*amendment' plugins/ai-driver/commands/merge-pr.md`
+- [ ] AC-001: merge-pr.md Step 0 preflight 明确 grep PR body 找 `R-NNN` 提议 AND PR changed files 里找 constitution 文件改动（两个并列触发）。`grep -Eq 'R-\[0-9\]\+|governance.*check|constitution.*amendment' plugins/ai-driver/commands/merge-pr.md && grep -Fq 'constitution.md' plugins/ai-driver/commands/merge-pr.md && grep -Fq 'files' plugins/ai-driver/commands/merge-pr.md`
 - [ ] AC-002: merge-pr.md 文档里有双语审批正则。`grep -Eq 'approve.*同意|同意.*approve' plugins/ai-driver/commands/merge-pr.md`
 - [ ] AC-003: merge-pr.md 文档里指明 admin/maintain allowlist 来源。`grep -Fq '/repos/{owner}/{repo}/collaborators' plugins/ai-driver/commands/merge-pr.md && grep -Fq 'role_name' plugins/ai-driver/commands/merge-pr.md`
 - [ ] AC-004: merge-pr.md 文档里有 canonical commit subject 检测。`grep -Fq 'docs(constitution): add R-' plugins/ai-driver/commands/merge-pr.md`
@@ -90,6 +94,7 @@ v0.3.10 就补这个缺口 —— 一个最小、可靠、grep-级别的 preflig
 - [ ] AC-008: CHANGELOG `[Unreleased]` 提到治理缺口修复。`awk '/^## \[Unreleased\]/{f=1;next} /^## \[/{f=0} f' CHANGELOG.md | grep -Eiq 'governance|amendment|merge-pr'`
 - [ ] AC-009: 不弱化现有防护 —— review-pr.md 的 stage-then-read / subagent / trust-boundary 仍在。`for tok in 'mktemp -d' 'chmod 700' 'subagent' 'trap'; do grep -Fq "$tok" plugins/ai-driver/commands/review-pr.md || exit 1; done`
 - [ ] AC-010: injection-lint 和既有 harness 仍通过。`bash .github/scripts/injection-lint.sh >/dev/null && bash tests/injection-lint-cases/run.sh >/dev/null 2>&1`
+- [ ] AC-011: v0.3.9 场景回归 —— 用 PR #8（R-008 正常）和 PR #11（R-009 事故）的 body + comments 快照喂给 preflight 逻辑的纯函数抽取（一个 bash 脚本 `tests/governance-snapshots/check.sh <snapshot-dir>`），断言 #8 → proceed，#11 → abort with "no amendment commit on this branch"。两个快照 + 一个脚本即可，不建 fixture harness 全套。`test -x tests/governance-snapshots/check.sh && bash tests/governance-snapshots/check.sh tests/governance-snapshots/pr-8 2>&1 | grep -Fq proceed && ! bash tests/governance-snapshots/check.sh tests/governance-snapshots/pr-11 2>&1 | grep -Fq proceed`
 
 ## Implementation Guide
 
@@ -100,27 +105,39 @@ v0.3.10 就补这个缺口 —— 一个最小、可靠、grep-级别的 preflig
 伪代码（validation-only，无写入）：
 
 ```
-# 1. 检测 PR body 提议
-proposals = grep -E '^####?\s+R-[0-9]+:|^\*\*R-[0-9]+:' <pr_body>
-if empty(proposals): continue to Step 1 (non-governance PR)
+# 0. 取 PR metadata（一次）
+base_ref     = gh pr view <N> --json baseRefName --jq .baseRefName
+changed_files = gh pr view <N> --json files --jq '.files[].path'
+pr_body       = gh pr view <N> --json body --jq .body
+comments      = gh pr view <N> --json comments --jq '.comments'
+git fetch origin "$base_ref"
+
+# 1. 两个并列触发条件
+body_proposals = grep -E '^####?\s+R-[0-9]+:|^\*\*R-[0-9]+:' <pr_body>
+constitution_changed = "constitution.md" in changed_files OR
+                       "plugins/ai-driver/templates/constitution.md" in changed_files
+
+if empty(body_proposals) AND NOT constitution_changed:
+  continue to Step 1  # 非治理 PR
+
+if constitution_changed AND empty(body_proposals):
+  abort "this PR changes constitution.md ... but the PR body does not contain an R-NNN proposal block. ..."
 
 # 2. 拉 admin/maintain allowlist（一次）
 allowlist = gh api --paginate "/repos/{owner}/{repo}/collaborators" \
   --jq '.[] | select(.role_name == "admin" or .role_name == "maintain") | .login'
 
 # 3. 对每条提议
-for R_NNN in proposals:
-  # 3a. 在 issue-comments 里找审批
+for R_NNN in body_proposals:
   approval = comments.filter(c ->
     c.user.login in allowlist AND
     first_non_blank_line(strip_quotes_and_fences(c.body)) =~ /^\s*(approve|同意)\s*R_NNN\b/i
   )
-  # 3b. 在 branch 上找 amendment commit
-  amendment = git log --format='%H %s' main..HEAD -- constitution.md |
+  amendment = git log --format='%H %s' "origin/$base_ref..HEAD" -- constitution.md |
               grep -E "^\S+ docs\(constitution\): add R_NNN "
 
   case (approval, amendment):
-    (yes, yes): continue  # 一切正常
+    (yes, yes): continue
     (no, _):    abort "R-NNN proposed in PR body but no 'approve R-NNN' / '同意R-NNN' comment found from an admin/maintainer. ..."
     (yes, no):
       if --defer "<rationale>": record single PR comment, continue
@@ -161,6 +178,17 @@ Follow-up: a constitution-only PR will land the amendment commit matching
 - plugins/ai-driver/commands/merge-pr.md — 新增 Step 0.10
 - plugins/ai-driver/commands/review-pr.md — 保持现状（stage-then-read + subagent 已足）
 - constitution.md §Governance — "Amending this constitution requires explicit human approval"
+
+## Accepted residue (Codex findings consciously not fixed)
+
+以下 findings 在 minimal-scope round 1 Codex 审查中被识别但**不修**，理由记录在此以免未来重复讨论：
+
+- **SEC-TRUST (High)** —— "merge-pr ingests PR body/comments without stage-then-read, reopens prompt-injection surface"。
+  **不修理由**：威胁模型不匹配。stage-then-read 防的是"untrusted 数据被插入 AI prompt"；merge-pr 的 governance check 只做**正则匹配**，不把 body/comments 内容喂给任何 LLM。读取 → 抽取 booleans/logins → 决策分支。没有 AI-prompt-interpolation 路径可被污染。review-pr 那条路才需要 stage-then-read（v0.3.8 已封），这里不需要放大 scope。
+- **BODY-FP (Medium)** —— "quoted/fenced R-NNN in PR body could false-trigger governance mode"。
+  **不修理由**：误触发方向是 **fail-safe**（把普通 PR 当治理 PR 处理，多要一个 approve 评论），不是 fail-open。fail-safe 误触发 → 维护者看到错误消息会立刻明白原因。不值得引入 body-quote-stripping 的额外复杂度。若未来真的频繁误报，再考虑加 explicit marker。
+
+以上两条记录在此，未来如果有实际 incident 证明威胁模型变了，再提新 R-rule 处理。
 
 ## Needs Clarification
 
