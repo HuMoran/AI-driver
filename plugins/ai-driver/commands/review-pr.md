@@ -235,7 +235,6 @@ Prior-finding resolution (if prior ai-driver-review comments exist): classify ea
 
 Output a Markdown table with the canonical 5-column schema (same as Gate 1 / Gate 2):
   | Severity | rule_id | location | message | fix_hint |
-If a finding corresponds to an existing-reviewer comment, record the reviewer login **inside** the `message` column as a leading prefix like `[also-flagged-by @<login>] ...`. Do NOT add extra columns — attribution is merged during Step 5 synthesis, not at the subagent boundary.
 
 Severities: Critical | High | Medium | Low | Info.
 
