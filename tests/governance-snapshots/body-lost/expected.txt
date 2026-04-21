@@ -1,0 +1,1 @@
+abort: this PR changes constitution.md but PR body has no R-NNN proposal block
