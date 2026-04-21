@@ -63,7 +63,6 @@ cp specs/_template.spec.md specs/my-feature.spec.md
 | `/ai-driver:merge-pr [number]`  | Merge PR, update CHANGELOG, tag, trigger release          |
 | `/ai-driver:doctor`             | Read-only health check — detects drift and misconfiguration |
 | `/ai-driver:fix-issues`         | Batch-fix GitHub issues labeled `ai-fix`; reads full issue thread incl. bot diagnostics |
-| `/ai-driver:run-tests`          | Detect and run the project test suite                     |
 | `/ai-driver:deploy <env>`       | Execute the deploy flow from `deploy/<project>.deploy.md` |
 
 See [`plugins/ai-driver/commands/`](plugins/ai-driver/commands) for the full command definitions.
@@ -80,7 +79,6 @@ AI-driver commands do **not** hard-code a model or effort level — you stay in 
 | `/ai-driver:merge-pr`   | Sonnet or session default (deterministic: rewrite CHANGELOG, merge, tag) |
 | `/ai-driver:doctor`     | Haiku or session default (pure read-only — file checks + diff) |
 | `/ai-driver:fix-issues` | Opus + `xhigh` effort (root cause analysis)                     |
-| `/ai-driver:run-tests`  | Haiku or session default (executes commands, parses output)     |
 | `/ai-driver:deploy`     | Sonnet or session default (follows the deploy doc step-by-step) |
 | `/ai-driver:init`       | Session default (file copy + jq merge)                          |
 
