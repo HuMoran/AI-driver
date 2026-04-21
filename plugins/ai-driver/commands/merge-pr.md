@@ -144,7 +144,10 @@ These require network and a working `gh` auth:
      echo "ERROR: this PR changes constitution.md (or its template mirror) but the PR body does not contain an R-NNN proposal block. Either add the proposal block to the PR body and re-request approval, or revert the constitution changes." >&2
      exit 2
    else
-     # 3.2 Admin/maintain allowlist — paginate the repo’s collaborators.
+     # 3.2 Admin/maintain allowlist — paginate the repo's collaborators.
+     # Endpoint shape: `/repos/{owner}/{repo}/collaborators` — the literal
+     # `{owner}/{repo}` placeholders are NOT substituted by `gh api`; we
+     # interpolate the resolved owner/repo slugs below to avoid a 404.
      GOV_REPO_FULL=$(gh repo view --json nameWithOwner --jq '.nameWithOwner')
      GOV_OWNER=${GOV_REPO_FULL%/*}
      GOV_REPO=${GOV_REPO_FULL#*/}
