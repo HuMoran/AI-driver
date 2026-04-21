@@ -91,9 +91,7 @@ over the data-fence prose) and separates the implementer role from the reviewer 
 so implementation bias does not mask defects.
 Enforcement: subagent `allowed-tools` is exactly `Read, Grep, Glob` — no Write, no
 network, no nested `Agent`/`Task` spawn. Codex invocations use Claude Code's
-`Bash(run_in_background=true)`; `nohup codex … &` is forbidden. Return-channel
-sanitization (length caps + `|` / `` ` `` escape + fixed-literal `parse-error`
-message) prevents a compromised subagent from smuggling attacker bytes back.
+`Bash(run_in_background=true)`; `nohup codex … &` is forbidden.
 
 ## Standards
 
