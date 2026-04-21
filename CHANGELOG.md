@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **[MUST-001] Contradictory anchor instructions in `review-pr.md` Pass 1 prompt.** The prompt carried two conflicting rules: the new anchor rule (L232) said "append ` (also flagged by @<login>)` as a prose suffix AFTER the anchor", while a leftover older instruction (L238) said "record the reviewer login ... as a leading prefix like `[also-flagged-by @<login>] ...`". A reviewer following the older line would produce messages starting with `[also-flagged-by ...]` — which Step 5a parses as an out-of-domain anchor and demotes to Observations, silently dropping valid findings from Verdict consensus. Discovered during `/ai-driver:review-pr 15` dogfood (Claude + Codex dual-consensus HIGH). The stale instruction is removed; only the new anchor rule remains.
+
 ### Changed
 
 - **Scope-fenced reviews across all three gates.** Spec / plan / PR review prompts are now stage-specific with explicit `Focus (...)` + `Out of scope (...)` sections. Every actionable finding must cite an anchor from its stage's whitelist — spec anchors `[spec:goal|scope|must-coverage|ac-executable|ambiguity|contradiction|over-specification]`, plan anchors `[plan:ac-uncovered|task-atomic|dependency|reuse|risk|feasibility]`, PR anchors `[AC-xxx]` / `[MUST-NNN]` / `[MUSTNOT-NNN]` / `[R-NNN]` / `[P-N]` / `[test:<name>]` / `[diff:<file>:<line>]`; `[observation:<tag>]` is always permitted. Findings with out-of-domain or no anchor are mechanically demoted to a non-blocking `Observations` section in the review output; Verdict computation excludes Observations. Three demotion tags: `anchor-out-of-domain`, `no-anchor`, and `anchor-requires-spec` (PR review without a linked spec). Anchor parse rule: first bracketed token matching `^\[[^\]]+\]` after stripping leading whitespace.
