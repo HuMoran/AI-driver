@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Governance preflight in `/ai-driver:merge-pr`** (closes the workflow gap behind v0.3.8→v0.3.9). `merge-pr` now runs a Step 0b.3 preflight that detects `R-NNN` constitution-amendment proposals (two parallel triggers: PR-body regex `^####?\s+R-NNN:|^\*\*R-NNN:` OR changes to `constitution.md` / its template mirror), then verifies two conditions before allowing merge: (1) admin/maintainer has posted `approve R-NNN` or `同意R-NNN` (bilingual) in a comment — first substantive line after deleting blockquoted/fenced content, rule-scoped syntax required; (2) branch carries a `docs(constitution): add R-NNN …` commit on top of the PR's base ref (not hardcoded `main`). Missing approval or missing commit → fail-closed with specific recovery hint. `--defer "<rationale>"` allows deferring an approved-without-commit case to a follow-up constitution-only PR (the v0.3.9 shape), leaving a single idempotent `<!-- ai-driver-defer:R-NNN -->` PR comment as audit trail. Regression fixtures at `tests/governance-snapshots/pr-{8,11}/` replay the PR #8 (positive) vs PR #11 (negative) contrast. AGENTS.md documents the canonical amendment commit template.
+
 ## [0.3.9] - 2026-04-20
 
 ### Changed
