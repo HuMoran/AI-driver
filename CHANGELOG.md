@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.4.2] - 2026-04-21
+
 ### Removed
 
 - **`/ai-driver:run-tests` command** (62 lines). The command was a thin language-agnostic wrapper over `cargo test` / `pytest` / `npm test` / `go test` / `flutter test`, detected via marker files (Cargo.toml, pyproject.toml, etc.) — duplicating logic already present in `rules/*.md` and `init --lang`. Zero callers inside the framework: `run-spec` Phase 3 (Acceptance) runs each AC's shell expression directly, not via `run-tests`. Users who want a test run can invoke their language's native test command, which is shorter than `/ai-driver:run-tests` anyway.
