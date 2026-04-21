@@ -7,6 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-04-21
+
+### Removed
+
+- **Return-channel sanitization** across all three review gates (`/ai-driver:run-spec` Phase 0 + Phase 1 plan review, `/ai-driver:review-spec`, `/ai-driver:review-pr`). The length-cap + `|`/`` ` `` escape + fixed-literal `parse-error` finding layer that post-processed subagent output is gone. Malformed subagent output now collapses into `CLAUDE-PASS: UNAVAILABLE (parse error)` alongside the existing UNAVAILABLE states; no separate `PARSE_ERROR` token, no synthesized Medium finding. Threat model: smuggling attacker bytes through findings requires a compromised subagent — a hypothetical attack path for a solo-maintainer dogfooding tool. First-line defenses (subagent `allowed-tools: Read, Grep, Glob`, `codex exec -s read-only`, stage-then-read of external bytes) cover the real risk.
+- **`chmod 700` + `trap 'rm -rf "$STAGE"' EXIT INT TERM`** hardening of the `/ai-driver:review-pr` tempdir. Bare `mktemp -d` remains; single-user dev-machine threat model does not warrant shared-tenant temp hardening.
+- **Injection-lint CI**: `.github/workflows/injection-lint.yml`, `.github/scripts/injection-lint.sh`, 5 lint rules (`L-TRUST`, `L-QUOTE`, `L-SELF-ID`, `L-BOT`, `L-EXTRACT`).
+- **Injection-lint regression harness**: `tests/injection-lint-cases/` (5 `.patch` files, `run.sh`, `assert-format.sh`).
+- **Injection-fixture library**: `tests/injection-fixtures/` (`bot-authored-spec-without-flag.md`, `changelog-prompt-injection.md`, `fake-self-id-marker.md`, `review-body-approval-hijack.md`, `spec-filename-shell-metachar.md`).
+- **`docs/security/injection-threat-model.md`** — threat-model doc and its mitigation anchors. Kept in git history for reference.
+- Command-file references to the deleted fixtures and threat-model doc in `review-pr.md` and `fix-issues.md`.
+
+### Changed
+
+- `constitution.md` R-009 "Review Runs In A Sandbox Executor" enforcement clause: the trailing "Return-channel sanitization (length caps + `|` / `` ` `` escape + fixed-literal `parse-error` message) prevents a compromised subagent from smuggling attacker bytes back" sentence is removed. Sandbox executor (subagent allowlist, read-only Codex, `Bash(run_in_background=true)`, staged-file handoff of untrusted bytes) remains the sole enforcement. Template mirror (`plugins/ai-driver/templates/constitution.md`) updated in sync.
+- `AGENTS.md` drops the "Injection-lint CI (v0.3.7+)" paragraph and the "Return-channel sanitization" sentence inside the Three-gate workflow description.
+- `README.md` + `README.zh-CN.md` workflow prose drop the "findings return through a length-capped + pipe-escaped parser" clause.
+- Command-file path-gate example path updated from `specs/../tests/injection-fixtures/foo.md` to `specs/../etc/passwd` (the fixtures dir is gone; `passwd` is the canonical path-traversal example).
+
+### Rationale
+
+This project is a solo-maintainer dogfooding tool for an AI-driven development framework. The v0.3.7→v0.3.8 hardening sprint added defense-in-depth (injection-lint CI, fixture library, return-channel sanitization, tempdir `chmod 700`) beyond what the actual threat model warrants. Each layer carries ongoing maintenance cost — CI time, rule tuning, fixture curation, parser-contract documentation, regression enforcement — in exchange for marginal protection against hypothetical compromised-subagent scenarios.
+
+First-line defenses cover the real risks:
+- Subagent `allowed-tools: Read, Grep, Glob` blocks write/network/nested-spawn at the tool-permission boundary.
+- `codex exec -s read-only` keeps Codex from mutating the tree.
+- Stage-then-read handoff prevents untrusted PR bytes from entering the main session's prompt.
+
+This PR reclaims roughly 500 lines across commands, CI, and tests with zero loss of the actual isolation contract.
+
+### Governance proposal — R-009 modification
+
+This release proposes an amendment to R-009 in `constitution.md`:
+
+> **R-009: Review Runs In A Sandbox Executor** — Enforcement clause trimmed. The final sentence about return-channel sanitization is removed. The remainder of the rule (sandbox executor mandate, subagent allowlist, `Bash(run_in_background=true)`, `codex exec -s read-only`, staged-file handoff) is unchanged.
+
+Per AGENTS.md §Governance, amendments require explicit human approval. Approval gate: reply `approve R-009` or `同意R-009` in a PR comment from an admin/maintainer collaborator. Amendment commit follows the canonical shape documented in AGENTS.md.
+
 ## [0.3.10] - 2026-04-21
 
 ### Fixed

@@ -144,7 +144,7 @@ The three-gate pipeline (v0.3.6+, dual-LLM uniform as of v0.3.8) catches defects
 - **Gate 2** (plan review inside `run-spec`): same shape — **subagent + Codex dual-LLM** — but **gated by Review Level ≥ B**.
 - **Gate 3** (PR review): **stage-then-read** (untrusted PR artifacts fetched via `gh ... > "$STAGE/..."` to a `mktemp -d` tempdir, stdout AND stderr redirected, so the main session never ingests raw bytes) + subagent Pass 1 + Codex Pass 2 + existing-reviewer cross-check for triple-consensus.
 
-Claude passes run inside **sandboxed subagents** (v0.3.8+): the untrusted content never enters the main session's prompt, findings return through a length-capped + pipe-escaped parser with a fixed-literal `parse-error` fallback — so a compromised subagent cannot smuggle attacker bytes back. Codex passes dispatch via Claude Code's `Bash(run_in_background=true)` pattern — the completion notification arrives automatically on the next turn, no polling, no silently dropped reviews.
+Claude passes run inside **sandboxed subagents** (v0.3.8+): the untrusted content never enters the main session's prompt. Codex passes dispatch via Claude Code's `Bash(run_in_background=true)` pattern — the completion notification arrives automatically on the next turn, no polling, no silently dropped reviews.
 
 Standalone `/ai-driver:review-spec` lets you pre-flight a draft spec without cutting a branch — same Layer 0 + subagent + Codex as Gate 1.
 

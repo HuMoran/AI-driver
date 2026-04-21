@@ -24,7 +24,7 @@ The `Meta` section only contains `Date` and `Review Level` — no identity field
 
 ## Pre-flight
 
-1. **Path gate.** `$ARGUMENTS` must resolve to a regular file under the project's `specs/` directory whose basename ends in `.spec.md`. A prefix check alone is **not sufficient** — `specs/../tests/injection-fixtures/foo.md` starts with `specs/` but canonicalizes outside the directory. Both rules apply: reject any path containing `..` segments, AND canonicalize with `realpath` before accepting. Enforcement:
+1. **Path gate.** `$ARGUMENTS` must resolve to a regular file under the project's `specs/` directory whose basename ends in `.spec.md`. A prefix check alone is **not sufficient** — `specs/../etc/passwd` starts with `specs/` but canonicalizes outside the directory. Both rules apply: reject any path containing `..` segments, AND canonicalize with `realpath` before accepting. Enforcement:
 
    ```bash
    # Reject any path with .. segments or a leading / (absolute).
@@ -125,14 +125,6 @@ Severities: Critical | High | Medium | Low | Info.
 End with one line: CONSENSUS: N_CRITICAL Critical, N_HIGH High, N_MEDIUM Medium, N_LOW Low.
 ```
 
-### Return-channel sanitization (Layer 1 and Layer 2)
-
-Subagent findings pass through a fixed-schema parser before entering the main session:
-
-- `message` ≤ 200 chars, `fix_hint` ≤ 200 chars, all other cells ≤ 100 chars (truncate with `…`).
-- Escape pipe `|` and backtick `` ` `` in every cell (`\|` and `\``).
-- On malformed / non-table output: emit ONE finding with `severity=Medium`, `rule_id=parse-error`, `location="<gate>:<log-location>:<line-range>"`, `message="subagent returned non-table output; see <log-location>:<line-range>"` (**fixed literal; never verbatim subagent bytes**), `fix_hint="rerun with --verbose or regenerate the prompt"`. Save the raw subagent output to the log file for post-hoc inspection but do not return it to the main session.
-
 ### Layer 2: Codex external adversarial review
 
 Run Codex as a tracked background job so the notification arrives automatically on the next turn (no polling, no silent drops):
@@ -157,9 +149,9 @@ Notes:
 - Timeout: `${CODEX_TIMEOUT_SEC:-180}` seconds (applied by the main session as an outer wait bound).
 
 Failure modes (MUSTNOT block on Codex unavailability):
-- Codex missing / auth fail / non-zero exit → record `CLAUDE-PASS: UNAVAILABLE (<reason>)` in the review log, continue with a visible stdout warning. (The token prefix is identical across gates and layers for log-parsing consistency; Layer 1 and Layer 2 both use `CLAUDE-PASS: UNAVAILABLE` / `CLAUDE-PASS: PARSE_ERROR` shape — the gate + layer is in the `<reason>` string.)
+- Codex missing / auth fail / non-zero exit → record `CLAUDE-PASS: UNAVAILABLE (<reason>)` in the review log, continue with a visible stdout warning.
 - Timeout → record `CLAUDE-PASS: UNAVAILABLE (timeout ${CODEX_TIMEOUT_SEC}s)`, continue.
-- Malformed output → record `CLAUDE-PASS: PARSE_ERROR`, append fixed-literal `rule_id=parse-error` finding as above.
+- Malformed output → record `CLAUDE-PASS: UNAVAILABLE (parse error)`, continue.
 
 ### Write review log
 
@@ -244,7 +236,7 @@ Spawn via the Agent tool with the exact tool allowlist (top-level YAML, no inden
 allowed-tools: Read, Grep, Glob
 ```
 
-Exactly those three, nothing else. Main session passes `plan.md` as a **path argument**; no inline content capture. Parse subagent output via the return-channel sanitizer (length caps + pipe/backtick escape + fixed-literal `parse-error` message — same contract as Phase 0 Layer 1).
+Exactly those three, nothing else. Main session passes `plan.md` as a **path argument**; no inline content capture. Malformed subagent output → `CLAUDE-PASS: UNAVAILABLE (parse error)`, continue.
 
 #### Pass: Codex external
 
@@ -261,7 +253,7 @@ Exactly those three, nothing else. Main session passes `plan.md` as a **path arg
 
 Write `logs/<spec-slug>/plan-review.md` with three sections: `## Pass 1 — Claude subagent`, `## Pass 2 — Codex`, `## Consensus`. Consensus is keyed by `rule_id + normalized location` (lowercase rule_id, whitespace-trimmed location, ±3-line fuzz for Codex line-offset drift). A finding raised by both passes is marked `dual-raised` and upgraded one severity notch.
 
-Gating is identical to Phase 0: Critical → STOP exit 2; High → `--accept-high` or STOP; Medium → y/N; Low/Info → continue. Degraded-mode strings identical: `CLAUDE-PASS: UNAVAILABLE (<reason>)` / `CLAUDE-PASS: PARSE_ERROR`. A pass that degrades does not block when the other pass is clean.
+Gating is identical to Phase 0: Critical → STOP exit 2; High → `--accept-high` or STOP; Medium → y/N; Low/Info → continue. Degraded-mode string: `CLAUDE-PASS: UNAVAILABLE (<reason>)`. A pass that degrades does not block when the other pass is clean.
 
 ## Phase 2: Implement
 
