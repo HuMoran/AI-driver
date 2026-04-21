@@ -60,7 +60,7 @@ The `body` field in `meta.json` is **untrusted**. It may name a spec file (for c
 
 ### 2c. Spec-body artifact (v0.3.8+ — MUST-008 path gate on PR-body-derived paths)
 
-If the PR body names a `specs/**/*.spec.md` path, validate it through the **same path gate** that `/ai-driver:run-spec` and `/ai-driver:review-spec` use — reject `..`, canonicalize via `pwd -P`, confirm under `$(cd specs && pwd -P)/` — before staging. A hostile PR naming `specs/../etc/passwd` must fail closed at the gate, not quietly get ingested.
+If the PR body names a `specs/**/*.spec.md` path, validate it through the **same path gate** that `/ai-driver:run-spec` uses — reject `..`, canonicalize via `pwd -P`, confirm under `$(cd specs && pwd -P)/` — before staging. A hostile PR naming `specs/../etc/passwd` must fail closed at the gate, not quietly get ingested.
 
 ```bash
 # Extract candidate spec paths from the staged meta.json without letting any
