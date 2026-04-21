@@ -19,15 +19,18 @@ After v0.3.10, a feature PR that proposes an amendment will reliably ship with i
 
 ### Scenario 1: `review-pr` detects governance replies automatically (Priority: P0)
 
-**As a** maintainer running `/ai-driver:review-pr <N>` on a PR that proposes `R-00N` in its body,
-**I want** the command to scan issue-comments for `approve as-is` / `approve with edits: ...` / `reject: ...` replies authored by an allowed reviewer,
-**so that** the verdict accurately names the governance state (`R-00N: approved by @<login> at <ISO>` / `R-00N: rejected by @<login>: <reason>` / `R-00N: pending` / `R-00N: contested — see thread`) without me re-reading the thread by hand.
+**As a** maintainer running `/ai-driver:review-pr <N>` on a PR that proposes `R-NNN` in its body,
+**I want** the command to scan issue-comments for rule-scoped replies (`approve R-NNN as-is` / `approve R-NNN with edits: ...` / `reject R-NNN: ...`) authored by an allowed reviewer,
+**so that** the verdict accurately names the governance state per-rule (`R-NNN: approved by @<login> at <ISO>` / `R-NNN: rejected by @<login>: <reason>` / `R-NNN: pending (<reason>)` / `R-NNN: contested — see thread`) without me re-reading the thread by hand.
 
 **Acceptance Scenarios:**
 
-1. **Given** a PR body proposing `R-00N: <text>` and an issue-comment by a repo owner/admin that matches `^approve as-is$` / `^approve with edits:.*` / `^reject:.*` (case-insensitive, whitespace-trimmed), **When** `/ai-driver:review-pr` runs, **Then** the final verdict section has a `### Governance decisions` block naming each detected approval/rejection with author + ISO timestamp + commit-anchor suggestion (e.g., `land as docs(constitution): add R-00N`).
-2. **Given** a PR body proposing `R-00N` with **no** matching approval comment, **When** review-pr runs, **Then** the verdict's Governance decisions block lists `R-00N: pending — no approval/rejection comment detected`.
-3. **Given** conflicting replies on the same `R-00N` (an `approve as-is` and a later `reject: ...`), **When** review-pr runs, **Then** the block lists `R-00N: contested — see thread` and names both authors + timestamps. The command does NOT guess resolution; it surfaces the conflict for a human.
+1. **Given** a PR body proposing `R-NNN: <text>` and an issue-comment by a repo admin/maintainer whose **first substantive line** (after stripping fenced code and `> ` blockquote markers) matches `^approve R-NNN as-is$` (case-insensitive, whitespace-trimmed) AND whose `created_at` ≥ the PR's `updated_at`, **When** `/ai-driver:review-pr` runs, **Then** the final verdict has a `### Governance decisions` block listing `R-NNN: approved by @<login> at <ISO>` plus a commit-anchor suggestion (e.g., `land as docs(constitution): add R-NNN — approved by @<login> in PR #<n>`).
+2. **Given** a PR body proposing `R-NNN` with **no** rule-scoped approval/rejection comment, **When** review-pr runs, **Then** the block lists `R-NNN: pending — no rule-scoped approval/rejection comment detected`.
+3. **Given** conflicting rule-scoped replies on the same `R-NNN` (an `approve R-NNN as-is` and a later `reject R-NNN: ...`), **When** review-pr runs, **Then** the block lists `R-NNN: contested — see thread` and names both authors + timestamps. The command does NOT guess resolution.
+4. **Given** an approval comment whose `created_at` is **earlier** than the PR's `updated_at` (PR body edited after the approval), **When** review-pr runs, **Then** the block lists `R-NNN: pending (proposal edited after approval at <ISO>; re-approval required)`.
+5. **Given** a comment containing `approve R-NNN as-is` **only inside a fenced code block or blockquote**, **When** review-pr runs, **Then** the comment is classified as commentary, NOT approval. The `### Governance decisions` block does not mention it.
+6. **Given** a comment saying `approve R-NNN with edits: clarify paragraph 2`, **When** review-pr runs, **Then** the block lists `R-NNN: pending (edits requested by @<login>: clarify paragraph 2)` — NOT approved. A plain `approve R-NNN as-is` from any admin is required to move to `approved`.
 
 **Independent Test Method:** craft three fixture PRs (approved / pending / contested) and run review-pr; assert the verdict body contains the correct `R-00N:` line for each.
 
@@ -42,7 +45,7 @@ After v0.3.10, a feature PR that proposes an amendment will reliably ship with i
 1. **Given** a PR proposing `R-00N` with an `approve as-is` comment and a commit `docs(constitution): add R-00N` on the branch, **When** merge-pr runs, **Then** it proceeds normally.
 2. **Given** a PR proposing `R-00N` with an approval comment but **no** amendment commit on the branch, **When** merge-pr runs, **Then** it aborts with: `ERROR: R-00N is approved by @<login> but no amendment commit on this branch. Either add the commit (docs(constitution): add R-00N + template pair) or pass --accept-open-amendment "<reason>" to defer.`
 3. **Given** a PR proposing `R-00N` with **no** approval comment, **When** merge-pr runs, **Then** it aborts with: `ERROR: R-00N is proposed in the PR body but no approval/rejection comment detected. Ask the maintainer to reply, or pass --accept-open-amendment "<reason>".`
-4. **Given** `--accept-open-amendment "R-00N deferred to v<next>"` is passed, **When** merge-pr runs, **Then** the rationale is recorded in the merge commit message, release notes, and a new issue-comment on the PR so the deferral is audit-visible.
+4. **Given** `--accept-open-amendment "R-NNN deferred to v<next>"` is passed (≤ 200 chars, single line, no unescaped control chars), **When** merge-pr runs, **Then** the rationale is **validated** (length + single-line + escape) during Step 0 preflight (no writes). In a new Step 2.5 — after CHANGELOG rewrite, before `gh pr merge` — the sanitized rationale is written to three audit sinks: merge commit message trailer, release-notes section, and a new PR comment. All three writes happen together; if any fails, the flow aborts and prints recovery hints.
 
 **Independent Test Method:** three fixture PR shapes (approved+commit, approved-no-commit, no-approval), run merge-pr in dry-run mode, assert the expected abort messages or proceed signal.
 
@@ -69,10 +72,13 @@ After v0.3.10, a feature PR that proposes an amendment will reliably ship with i
 
 ### Edge Cases
 
-- **Ambiguous approval author.** "approve as-is" posted by a bot or a drive-by contributor who is not a repo owner/admin. **Mitigation:** the approval-author allowlist is `gh api repos/<owner>/<repo>/collaborators` filtered to `permission in {admin, maintain}`. Other authors' approvals count as commentary, not approval.
-- **Markdown rendering vs raw body.** GitHub stores comments as raw markdown; `gh api /issues/<n>/comments --jq .[].body` returns the raw text. Grep uses raw text, so code-block quoted `approve as-is` inside a comment counts as approval (by design — if you quoted it, you probably meant it; otherwise the maintainer can reject explicitly).
-- **Multiple `R-00N` proposals in one PR body.** Rare but possible. Each proposal is detected independently (`^\s*####?\s+R-[0-9]{3,}:|^\s*\*\*R-[0-9]{3,}:`). Each needs its own approval + its own amendment commit.
+- **Ambiguous approval author.** `approve R-NNN as-is` posted by a bot or drive-by contributor who is not a repo owner/admin. **Mitigation:** the approval-author allowlist is `gh api repos/<owner>/<repo>/collaborators` filtered to `permission in {admin, maintain}`. Other authors' approvals count as commentary, not approval.
+- **Markdown quoting / code fence false positives.** Examples of approval syntax inside a blockquote (`> approve R-009 as-is`) or a fenced code block (`` ``` approve R-009 as-is ``` ``) must NOT count as real approval. **Mitigation:** strip fenced code spans AND leading `> ` blockquote markers before matching. The approval marker must appear as the **first substantive (non-empty, non-emphasis-only) line** of the comment body.
+- **Multiple `R-00N` proposals in one PR body.** Rare but possible. Each proposal is detected independently (`^\s*####?\s+R-[0-9]{3,}:|^\s*\*\*R-[0-9]{3,}:`). **Approval replies MUST name the specific rule number** — syntax is `approve R-NNN as-is` / `approve R-NNN with edits: ...` / `reject R-NNN: ...`. A bare `approve as-is` satisfies NO proposal (it's logged as commentary). Each R-NNN needs its own approval + its own amendment commit.
 - **Amendment commit references a different `R-XXX` than the PR body proposes.** Typo guard: the `merge-pr` check requires the SAME number, not just any `docs(constitution): add R-*`.
+- **Proposal text edited after approval.** The PR author edits the R-NNN block in the PR body AFTER an approval comment was posted. **Mitigation:** each approval comment's `created_at` must be **≥** the PR's `updated_at` at the moment of merge-pr preflight. If the body was edited later, the approval is stale — marked `pending (proposal edited after approval)`, require a new approval. Implementation: compare `meta.json.updated_at` vs each approval comment's `created_at`.
+- **`approve R-NNN with edits: ...` interpretation.** This is NOT a plain approval; it's a **request-changes-then-approve**. Treated as `pending (edits requested by @X: <edit summary>)`. A later plain `approve R-NNN as-is` from the same or another admin is required to move the rule to `approved`. merge-pr aborts as `pending` otherwise.
+- **Rationale-injection into commit/release notes.** `--accept-open-amendment "<rationale>"` writes caller-supplied text into merge-commit, release-notes, and a PR comment. **Mitigation:** cap `<rationale>` at 200 characters, reject newlines (must be a single line), and escape `` ` ``, `|`, `>`, `<`, `$` before interpolation. Longer rationales go into a PR comment only, never the commit or release-notes sink.
 
 ## Acceptance Criteria
 
@@ -81,46 +87,56 @@ Every AC is a runnable shell expression that exits non-zero on failure.
 ### `/ai-driver:review-pr` governance ingestion
 
 - [ ] AC-001: `review-pr.md` Step 5 (Cross-reviewer synthesis) references a `### Governance decisions` output block. `grep -Fq 'Governance decisions' plugins/ai-driver/commands/review-pr.md`
-- [ ] AC-002: the command doc names the governance-reply regex shape. `grep -Eq '\^approve as-is\$|\^approve with edits:|\^reject:' plugins/ai-driver/commands/review-pr.md`
+- [ ] AC-002: the command doc names the **rule-scoped** governance-reply syntax. `grep -Fq 'approve R-NNN as-is' plugins/ai-driver/commands/review-pr.md && grep -Fq 'reject R-NNN:' plugins/ai-driver/commands/review-pr.md`
 - [ ] AC-003: the detection logic reads from `$STAGE/issue-comments.json` (not from a fresh `gh api` call — keeps the stage-then-read invariant). `awk '/Governance decisions|governance decision/,/^##|^###/' plugins/ai-driver/commands/review-pr.md | grep -Fq '$STAGE/issue-comments.json'`
 - [ ] AC-004: approval-author allowlist restricted to repo admins/maintainers. `grep -Eq 'collaborators[^\n]*permission|admin.*maintain|owner.*admin' plugins/ai-driver/commands/review-pr.md`
 - [ ] AC-005: three explicit governance states documented (approved / pending / contested). `for s in 'approved by' 'pending' 'contested'; do grep -Fq "$s" plugins/ai-driver/commands/review-pr.md || exit 1; done`
+- [ ] AC-006: doc names the fenced-code / blockquote stripping rule for reply detection (GOV-002 fix). `grep -Eiq 'fenced code|blockquote|strip.*code|> blockquote|first substantive line' plugins/ai-driver/commands/review-pr.md`
+- [ ] AC-007: doc names the stale-approval invalidation rule (GOV-003 fix). `grep -Eiq 'updated_at.*created_at|proposal edited after approval|stale approval' plugins/ai-driver/commands/review-pr.md`
+- [ ] AC-008: doc names `approve R-NNN with edits:` as pending, not approved (GOV-004 fix). `awk "/Governance decisions|governance decision/,/^##|^###/" plugins/ai-driver/commands/review-pr.md | grep -Eiq 'with edits.*pending|edits requested.*pending'`
 
 ### `/ai-driver:merge-pr` governance check
 
-- [ ] AC-006: `merge-pr.md` Step 0 preflight has a new sub-step checking PR body for `R-00N` proposals. `grep -Eq 'R-[0-9]+.*proposal|governance.*check|constitution.*amendment' plugins/ai-driver/commands/merge-pr.md`
-- [ ] AC-007: the check detects amendment commits with the canonical shape. `grep -Fq 'docs(constitution): add R-' plugins/ai-driver/commands/merge-pr.md`
-- [ ] AC-008: three abort conditions are documented (approval-no-commit / no-approval / contested). `for tok in 'no amendment commit on this branch' 'no approval/rejection comment detected' 'contested'; do grep -Fq "$tok" plugins/ai-driver/commands/merge-pr.md || exit 1; done`
-- [ ] AC-009: `--accept-open-amendment <rationale>` flag is documented with its audit-trail requirement. `grep -Fq '--accept-open-amendment' plugins/ai-driver/commands/merge-pr.md && grep -Eq 'merge commit|release notes|audit' plugins/ai-driver/commands/merge-pr.md`
-- [ ] AC-010: the flag's rationale must end up visible in the merge commit message, release notes section, AND as a PR comment. `grep -Eq 'merge commit.*rationale|rationale.*merge commit' plugins/ai-driver/commands/merge-pr.md && grep -Eq 'release notes.*rationale|rationale.*release notes' plugins/ai-driver/commands/merge-pr.md`
+- [ ] AC-009: `merge-pr.md` Step 0 preflight has a new sub-step checking PR body for `R-00N` proposals. `grep -Eq 'R-[0-9]+.*proposal|governance.*check|constitution.*amendment' plugins/ai-driver/commands/merge-pr.md`
+- [ ] AC-010: the check detects amendment commits with the canonical shape. `grep -Fq 'docs(constitution): add R-' plugins/ai-driver/commands/merge-pr.md`
+- [ ] AC-011: three abort conditions are documented (approval-no-commit / no-approval / contested). `for tok in 'no amendment commit on this branch' 'no approval/rejection comment detected' 'contested'; do grep -Fq "$tok" plugins/ai-driver/commands/merge-pr.md || exit 1; done`
+- [ ] AC-012: `--accept-open-amendment <rationale>` flag is documented with rationale length + single-line + escape rules. `grep -Fq '--accept-open-amendment' plugins/ai-driver/commands/merge-pr.md && grep -Eq '200 char|single.line|escape' plugins/ai-driver/commands/merge-pr.md`
+- [ ] AC-013: rationale recorded in all three audit sinks (merge commit, release notes, PR comment). `grep -Eq 'merge commit.*trailer|Governance-deferral' plugins/ai-driver/commands/merge-pr.md && grep -Eq 'release notes|Governance deferrals' plugins/ai-driver/commands/merge-pr.md && grep -Eq 'PR comment|gh pr comment' plugins/ai-driver/commands/merge-pr.md`
+- [ ] AC-014: Step 0 governance check is validation-only (no writes). Writes live in a separate later step. `awk '/^## Step 0|governance check/,/^## Step 1|^## Step 2/' plugins/ai-driver/commands/merge-pr.md | grep -Eiq 'validation only|no write|pure read|no mutation'`
+- [ ] AC-015: a Step 2.5 (or equivalent "after Step 2, before merge") performs the three audit-sink writes. `grep -Eq '## Step 2\.5|^### .*Governance audit|after Step 2.*before.*merge' plugins/ai-driver/commands/merge-pr.md`
 
 ### Standardized amendment commit shape
 
-- [ ] AC-011: `AGENTS.md` governance section names the exact commit-message template. `grep -Fq 'docs(constitution): add R-' AGENTS.md && grep -Fq 'approved by @' AGENTS.md`
-- [ ] AC-012: `merge-pr.md` grep for amendment commit uses the same shape. `grep -Eq "docs\\(constitution\\): add R-" plugins/ai-driver/commands/merge-pr.md`
+- [ ] AC-016: `AGENTS.md` governance section names the exact commit-message template. `grep -Fq 'docs(constitution): add R-' AGENTS.md && grep -Fq 'approved by @' AGENTS.md`
+- [ ] AC-017: `merge-pr.md` grep for amendment commit uses the same shape. `grep -Eq "docs\\(constitution\\): add R-" plugins/ai-driver/commands/merge-pr.md`
 
 ### Non-weakening (carry-forward from v0.3.6+)
 
-- [ ] AC-013: Phase 0 spec review is still unconditional (v0.3.6 R-008). `! awk '/^## Phase 0: Spec Review/,/^## Phase 1:/' plugins/ai-driver/commands/run-spec.md | grep -iE 'if.*review[- ]?level|review[- ]?level.*(==|is|>=)' | grep -q .`
-- [ ] AC-014: subagent migration still in place for all three gates (v0.3.8 R-009). `for f in plugins/ai-driver/commands/run-spec.md plugins/ai-driver/commands/review-spec.md plugins/ai-driver/commands/review-pr.md; do grep -Fq subagent "$f" || exit 1; done`
-- [ ] AC-015: stage-then-read still in `review-pr.md`. `grep -Fq 'mktemp -d' plugins/ai-driver/commands/review-pr.md && grep -Fq 'chmod 700' plugins/ai-driver/commands/review-pr.md && grep -Fq 'trap' plugins/ai-driver/commands/review-pr.md`
-- [ ] AC-016: injection-lint still passes. `bash .github/scripts/injection-lint.sh >/dev/null`
-- [ ] AC-017: harness still passes. `bash tests/injection-lint-cases/run.sh >/dev/null 2>&1`
+- [ ] AC-018: Phase 0 spec review is still unconditional (v0.3.6 R-008). `! awk '/^## Phase 0: Spec Review/,/^## Phase 1:/' plugins/ai-driver/commands/run-spec.md | grep -iE 'if.*review[- ]?level|review[- ]?level.*(==|is|>=)' | grep -q .`
+- [ ] AC-019: subagent migration still in place for all three gates (v0.3.8 R-009). `for f in plugins/ai-driver/commands/run-spec.md plugins/ai-driver/commands/review-spec.md plugins/ai-driver/commands/review-pr.md; do grep -Fq subagent "$f" || exit 1; done`
+- [ ] AC-020: stage-then-read still in `review-pr.md`. `grep -Fq 'mktemp -d' plugins/ai-driver/commands/review-pr.md && grep -Fq 'chmod 700' plugins/ai-driver/commands/review-pr.md && grep -Fq 'trap' plugins/ai-driver/commands/review-pr.md`
+- [ ] AC-021: injection-lint still passes. `bash .github/scripts/injection-lint.sh >/dev/null`
+- [ ] AC-022: harness still passes. `bash tests/injection-lint-cases/run.sh >/dev/null 2>&1`
 
 ### Docs sync
 
-- [ ] AC-018: `AGENTS.md` three-gate paragraph gains a line about governance detection. `grep -Fq 'governance' AGENTS.md`
-- [ ] AC-019: CHANGELOG `[Unreleased]` mentions the governance workflow fix. `awk '/^## \[Unreleased\]/{f=1;next} /^## \[/{f=0} f' CHANGELOG.md | grep -Eiq 'governance|amendment|R-00N|merge-pr'`
+- [ ] AC-023: `AGENTS.md` three-gate paragraph gains a line about governance detection. `grep -Fq 'governance' AGENTS.md`
+- [ ] AC-024: CHANGELOG `[Unreleased]` mentions the governance workflow fix. `awk '/^## \[Unreleased\]/{f=1;next} /^## \[/{f=0} f' CHANGELOG.md | grep -Eiq 'governance|amendment|R-00N|merge-pr'`
 
 ## Constraints
 
 ### MUST
 
 - MUST-001: `review-pr` reads governance replies from `$STAGE/issue-comments.json` (staged in Gate 3), not from a fresh `gh api` call. This keeps the v0.3.8 stage-then-read invariant intact — all untrusted data passes through `$STAGE`.
-- MUST-002: `merge-pr`'s governance check runs in Step 0 preflight (pure reads, no mutation). If it aborts, **nothing has been written** — same fail-closed shape as every other Step 0 abort.
-- MUST-003: The approval-author allowlist is computed at runtime from `gh api repos/<owner>/<repo>/collaborators` filtered to `permission in {admin, maintain}`. It is NOT hardcoded. Non-admin approvals count as commentary, not governance decisions.
-- MUST-004: When `--accept-open-amendment <rationale>` is used, the rationale is recorded in **three places**: merge commit message, release notes (via CHANGELOG if applicable), and a new PR comment posted before the merge. No single-location audit record.
-- MUST-005: Amendment commit detection is by **exact R-number match**. `docs(constitution): add R-010` does NOT satisfy a PR body proposing `R-011`.
+- MUST-002: `merge-pr`'s governance check runs **only as validation** in Step 0 preflight — no file / commit / comment writes. If the check aborts, nothing has been written. Actual audit-sink writes (for `--accept-open-amendment`) happen in a new Step 2.5 **after** CHANGELOG rewrite and **before** `gh pr merge`; they are wrapped in the same fail-closed error handling as the CHANGELOG rewrite.
+- MUST-003: The approval-author allowlist is computed at runtime from `gh api repos/<owner>/<repo>/collaborators` filtered to `permission in {admin, maintain}`. Non-admin approvals count as commentary, not governance decisions.
+- MUST-004: Governance reply syntax is **rule-scoped**: approvals and rejections MUST name the specific `R-NNN`. Bare `approve as-is` / `reject: ...` (no rule number) is commentary, not a governance decision. This prevents one approval from satisfying multiple proposals in a multi-proposal PR.
+- MUST-005: Governance replies are parsed from the **first substantive line** of the comment body, **after stripping fenced code blocks and `> ` blockquote markers**. Approval syntax inside quoted examples does NOT count.
+- MUST-006: An approval is only valid if its `created_at` is ≥ the PR's `updated_at` at merge-pr preflight time. Editing the PR body after approval invalidates it; status becomes `pending (proposal edited after approval)`.
+- MUST-007: `approve R-NNN with edits: <edit summary>` is classified as `pending (edits requested)`, NOT `approved`. A later plain `approve R-NNN as-is` from any admin is required to reach `approved`.
+- MUST-008: When `--accept-open-amendment <rationale>` is used, the rationale is sanitized: **≤ 200 characters, single line (no newlines), with `` ` ``, `|`, `>`, `<`, `$` escaped** before interpolation into any audit sink. Longer or multi-line rationales are rejected at Step 0 with an error.
+- MUST-009: `--accept-open-amendment` rationale is recorded in **three audit sinks**: merge commit message (as a `Governance-deferral: <rationale>` trailer), release-notes section (under a `### Governance deferrals` subheading), and a new PR comment. All three writes occur in Step 2.5.
+- MUST-010: Amendment commit detection is by **exact R-number match**. `docs(constitution): add R-010` does NOT satisfy a PR body proposing `R-011`.
 
 ### MUST NOT
 
