@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-04-21
+
 ### Removed
 
 - **Return-channel sanitization** across all three review gates (`/ai-driver:run-spec` Phase 0 + Phase 1 plan review, `/ai-driver:review-spec`, `/ai-driver:review-pr`). The length-cap + `|`/`` ` `` escape + fixed-literal `parse-error` finding layer that post-processed subagent output is gone. Malformed subagent output now collapses into `CLAUDE-PASS: UNAVAILABLE (parse error)` alongside the existing UNAVAILABLE states; no separate `PARSE_ERROR` token, no synthesized Medium finding. Threat model: smuggling attacker bytes through findings requires a compromised subagent — a hypothetical attack path for a solo-maintainer dogfooding tool. First-line defenses (subagent `allowed-tools: Read, Grep, Glob`, `codex exec -s read-only`, stage-then-read of external bytes) cover the real risk.
