@@ -1,0 +1,61 @@
+# Implementation Log — v041-scope-fenced-reviews
+
+## What was implemented
+
+**Scope-fenced reviews** across three gates. Anchor-based mechanical demotion of out-of-domain findings to a non-blocking Observations section. Verdict computation excludes Observations.
+
+- Anchor whitelist per stage (spec / plan / PR), documented in both command docs and `AGENTS.md`
+- Anchor parse rule (MUST-001): first `^\[[^\]]+\]` token of `message` cell after leading whitespace
+- Three demotion tags: `anchor-out-of-domain`, `no-anchor`, `anchor-requires-spec` (PR-only chore-PR case)
+- Preservation invariant: demoted findings keep `severity` / `rule_id` / `location` / `message` / `fix_hint` / source byte-for-byte; `tag` column records demotion reason; severity caps at Info for Verdict computation
+- Stage-specific prompts: `Focus (<stage>):` + `Out of scope (<stage>):` + anchor whitelist in every review prompt
+- Step 6 report format: `### Observations` section between Cross-source findings and Verdict, with literal "Verdict computation excludes Observations"
+- Deterministic regression harness `tests/review-synthesis/drift-demotion.sh` + 4 fixtures
+
+## What existing code was leveraged
+
+- Subagent `allowed-tools: Read, Grep, Glob` allowlist — unchanged
+- `codex exec ... -s read-only` dispatch pattern — unchanged
+- Stage-then-read `mktemp -d` tempfile — unchanged
+- Path gate `pwd -P` canonicalization — unchanged
+- Degraded-mode `CLAUDE-PASS: UNAVAILABLE (<reason>)` contract — unchanged
+- PR-comment self-identification marker `<!-- ai-driver-review -->` — unchanged
+- Existing-reviewer cross-check in review-pr Step 2c (v0.3.4+) — unchanged
+- Template-sync CI — unchanged
+- Existing table schema `| Severity | rule_id | location | message | fix_hint |` — unchanged
+
+All v0.4.0 surviving defenses verified intact by AC-012 (passive invariant).
+
+## Issues encountered
+
+1. **Em-dash vs colon typo (T004)**: First edit to `review-spec.md` wrote `Focus (spec review) —` (em-dash); AC required `Focus (spec review):` (colon). Fixed via `replace_all` Edit then `--amend` (branch not yet pushed). Per CLAUDE.md preference, a separate fix commit would have been cleaner.
+
+2. **Phase 0 + Phase 1 review skip** (documented `--accept-high` equivalent): re-running Codex Phase 0/1 after 4 external rounds would re-enter the loop this very PR aims to fix. Rationale logged in `spec-review.md` and `tasks.md`. Passive verification ACs (AC-006, AC-012) moved into T010 acceptance run.
+
+3. **No significant implementation blockers**. All 13 ACs passed on the first full acceptance run.
+
+## Commit sequence (14 commits on branch)
+
+```
+8c993e1  docs(specs): add v0.4.1 scope-fenced reviews spec
+5eef943  docs(logs): Phase 0 spec-review + Phase 1 plan + tasks
+86e0fb7  docs(logs): consolidate tasks to 10 after plan review
+3870b21  T001 test(review-synthesis): drift-demotion harness + 4 fixtures (RED)
+87d3534  T002 feat(review-synthesis): classify_anchor (GREEN)
+6ee2b24  T003 feat(review-synthesis): scope-fence prose in 3 review commands
+7ba50b6  T004 feat(review-spec): Layer 1 + Layer 2 prompts
+d6ec612  T005 feat(run-spec): Phase 0 Layer 1 prompt
+063f10e  T006 feat(run-spec): Phase 1 plan-review prompts
+98f0997  T007 feat(review-pr): Pass 1 + Pass 2 prompts
+3cfff68  T008 feat(review-pr): Step 6 Observations + verdict-excludes prose
+97b2a03  T009 docs(AGENTS): scope-fenced reviews with anchor whitelist
+308469d  T010 docs: v0.4.1 acceptance 13/13 + CHANGELOG [Unreleased]
+(this)   docs(logs): implementation log for v041-scope-fenced-reviews
+```
+
+## Final status: DONE
+
+- 13 / 13 ACs PASS
+- All v0.4.0 defenses verified intact
+- Known Limitations documented in spec (anchor-laundering residual accepted)
+- PR #15 open against `main`

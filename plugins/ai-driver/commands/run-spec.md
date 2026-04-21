@@ -102,23 +102,32 @@ Exactly those three, nothing else. No Write, no Bash, no Agent (nested spawn for
 ### Layer 1 prompt (literal, audited)
 
 ```
-You are an adversarial reviewer of an engineering spec. Be terse and direct.
+You are a conformance reviewer of an engineering spec. Be terse and direct.
 
 Read only these files: $SPEC_PATH ; ${CLAUDE_PLUGIN_ROOT}/rules/*.md ; ./constitution.md
 Do NOT read any file outside this list.
 
 You MUST NOT spawn nested subagents. This review is a leaf, not a branch.
 
-Review checklist:
-(a) AC executability — boolean machine check per AC?
-(b) MUST/MUSTNOT coverage — every constraint covered by an AC?
-(c) Scope discipline — feature mixed with refactor?
-(d) Ambiguity — undefined terms, vague verbs.
-(e) Contradictions — Goal / Scenarios / AC / MUST inconsistency.
-(f) Security — prompt injection, unsafe shell, trust-boundary gaps.
-(g) Feasibility — unverifiable or unreachable ACs.
-(h) Missing edge cases.
-(i) Over-specification — HOW leaking in.
+Focus (spec review): flag only issues that compromise the spec's structural qualities as an input to implementation. Every actionable finding MUST pick ONE anchor from this list:
+
+1. `[spec:goal]` — Goal unclear, missing WHAT or WHY, multiple competing goals.
+2. `[spec:scope]` — Scope undefined, contradicted, or mixed (feature + refactor in one spec).
+3. `[spec:must-coverage]` — A MUST or MUSTNOT constraint is not referenced by any AC.
+4. `[spec:ac-executable]` — An AC is not a boolean machine check (vague "should", "works correctly"), or has no runnable command / grep.
+5. `[spec:ambiguity]` — Undefined term, vague verb, unbounded "etc.", undefined actor.
+6. `[spec:contradiction]` — Internal inconsistency between Goal / Scenarios / AC / MUST / MUSTNOT.
+7. `[spec:over-specification]` — HOW leaking in; implementation details prescribed (constitution P2 violation).
+
+Out of scope (spec review): do NOT raise these as findings. If you have such a concern, emit it as `[observation:<short-tag>]` (non-blocking):
+
+- Code quality, architecture, or implementation-level defects (there is no code under review yet)
+- Test implementation or test-framework choices
+- Spec files other than $SPEC_PATH (historical specs are release artifacts, not living contracts)
+- Stylistic preferences, alternative phrasings, "while you're at it" suggestions
+- Feature additions beyond the stated Goal
+
+Anchor rule. Every finding's `message` cell MUST open with a literal bracketed anchor from the Focus list, or `[observation:<tag>]`. Findings without a whitelisted anchor are mechanically demoted at synthesis.
 
 Output a Markdown table with columns: Severity | rule_id | location | message | fix_hint
 Severities: Critical | High | Medium | Low | Info.
@@ -161,7 +170,20 @@ Write `logs/<spec-slug>/spec-review.md` containing three sections (Layer 0 / Lay
 
 ### Gating
 
-Build a consensus table keyed by **`(rule_id, normalized location)`** — lowercase rule_id, whitespace-trimmed location, with ±3-line fuzz on `file:line` positions to absorb Codex line-offset drift. Two findings with the same rule_id but genuinely different locations are separate rows, **not** merged. A finding raised by both Layer 1 and Layer 2 on the same `(rule_id, normalized location)` key is marked `dual-raised` and upgraded one severity notch (same pattern as `review-spec.md` / `review-pr.md`).
+Gating runs in two stages: **scope fence** (anchor-based demotion to Observations) followed by **consensus + severity**. Verdict computation excludes Observations.
+
+**Scope fence (v0.4.1+).** Every actionable finding MUST cite an anchor in its `message` cell, parsed as the leading bracketed token matching `^\[[^\]]+\]` after stripping leading whitespace. `[observation:*]` is always permitted.
+
+**Stage whitelist (spec review):** `[spec:goal]`, `[spec:scope]`, `[spec:must-coverage]`, `[spec:ac-executable]`, `[spec:ambiguity]`, `[spec:contradiction]`, `[spec:over-specification]`, `[observation:*]`.
+
+Findings whose anchor is not in the whitelist are demoted to the `Observations` section at severity `Info`, do NOT contribute to the Verdict, and have all original fields preserved byte-for-byte. Demotion tags:
+
+- `anchor-out-of-domain: <anchor>` — anchor from a different stage, unknown, or malformed / non-existent ID
+- `no-anchor` — `message` does not start with a bracketed token
+
+Reference implementation: `tests/review-synthesis/drift-demotion.sh`.
+
+**Consensus + severity.** Build a consensus table keyed by **`(rule_id, normalized location)`** — lowercase rule_id, whitespace-trimmed location, with ±3-line fuzz on `file:line` positions to absorb Codex line-offset drift. Two findings with the same rule_id but genuinely different locations are separate rows, **not** merged. A finding raised by both Layer 1 and Layer 2 on the same `(rule_id, normalized location)` key is marked `dual-raised` and upgraded one severity notch (same pattern as `review-spec.md` / `review-pr.md`).
 
 | Severity | Action |
 |---|---|
@@ -214,14 +236,31 @@ v0.3.8+: Phase 1 plan review is a **dual-LLM gate**, symmetric with Phase 0 (spe
 Same shape as the Layer 1 spec-review prompt — shared checklist so findings are comparable across gates:
 
 ```
-You are an adversarial reviewer of an implementation plan. Be terse.
+You are a conformance reviewer of an implementation plan. Be terse.
 
 Read only these files: logs/<spec-slug>/plan.md ; logs/<spec-slug>/tasks.md ; $SPEC_PATH ; ./constitution.md
 Do NOT read any file outside this list.
 
 You MUST NOT spawn nested subagents. This review is a leaf, not a branch.
 
-Review the plan for: gaps, risks, feasibility issues, scope creep, architectural debt, missing task coverage vs ACs, and tests that will false-pass.
+Focus (plan review): flag only issues that compromise the plan's correctness as a realization path for $SPEC_PATH. Every actionable finding MUST pick ONE anchor from this list:
+
+1. `[plan:ac-uncovered]` — A spec AC has no task covering it.
+2. `[plan:task-atomic]` — A task is too large (not 2–5 min), not atomic, or bundles unrelated work.
+3. `[plan:dependency]` — Task ordering misses a dependency; concurrent-marked task actually depends on another.
+4. `[plan:reuse]` — Plan reinvents something the repo already provides (missed reuse opportunity).
+5. `[plan:risk]` — Unidentified risk, blocker, or external dependency that will derail implementation.
+6. `[plan:feasibility]` — A task is infeasible with the stated constraints.
+
+Out of scope (plan review): do NOT raise these as findings. If you have such a concern, emit it as `[observation:<short-tag>]` (non-blocking):
+
+- Spec re-debate — the spec is an input, not under review here
+- Code-level defects (no code written yet)
+- Stylistic preferences for task wording
+- "This architecture could also be X" — plan review is about correctness not alternatives
+- Historical plans or tasks from other specs
+
+Anchor rule. Every finding's `message` cell MUST open with a literal bracketed anchor from the Focus list, or `[observation:<tag>]`. Findings without a whitelisted anchor are mechanically demoted at synthesis.
 
 Output a Markdown table with columns: Severity | rule_id | location | message | fix_hint.
 Severities: Critical | High | Medium | Low | Info.
@@ -247,13 +286,15 @@ Exactly those three, nothing else. Main session passes `plan.md` as a **path arg
   codex exec --model gpt-5.4 --config model_reasoning_effort="high" -s read-only \
     "$PLAN_REVIEW_PROMPT" < logs/<spec-slug>/plan.md
   ```
-- `$PLAN_REVIEW_PROMPT` is the literal prompt block above.
+- `$PLAN_REVIEW_PROMPT` is the literal prompt block above. Codex receives the same Focus (plan review): + Out of scope (plan review): + plan-anchor whitelist as the subagent pass — the dual-LLM arrangement means the scope fence applies symmetrically, and cross-pass consensus operates only on the surviving main findings.
 
 #### Consensus + log
 
 Write `logs/<spec-slug>/plan-review.md` with three sections: `## Pass 1 — Claude subagent`, `## Pass 2 — Codex`, `## Consensus`. Consensus is keyed by `rule_id + normalized location` (lowercase rule_id, whitespace-trimmed location, ±3-line fuzz for Codex line-offset drift). A finding raised by both passes is marked `dual-raised` and upgraded one severity notch.
 
 Gating is identical to Phase 0: Critical → STOP exit 2; High → `--accept-high` or STOP; Medium → y/N; Low/Info → continue. Degraded-mode string: `CLAUDE-PASS: UNAVAILABLE (<reason>)`. A pass that degrades does not block when the other pass is clean.
+
+**Scope fence (plan review).** Same contract as Phase 0: findings must carry anchors from the plan-review whitelist, else demoted to `Observations`. **Stage whitelist (plan review):** `[plan:ac-uncovered]`, `[plan:task-atomic]`, `[plan:dependency]`, `[plan:reuse]`, `[plan:risk]`, `[plan:feasibility]`, `[observation:*]`. Demotion tags: `anchor-out-of-domain: <anchor>` for cross-stage/unknown anchors, `no-anchor` for missing bracket prefix. Verdict excludes Observations. Reference implementation: `tests/review-synthesis/drift-demotion.sh`.
 
 ## Phase 2: Implement
 
