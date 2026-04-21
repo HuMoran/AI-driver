@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- **Scope-fenced reviews across all three gates.** Spec / plan / PR review prompts are now stage-specific with explicit `Focus (...)` + `Out of scope (...)` sections. Every actionable finding must cite an anchor from its stage's whitelist — spec anchors `[spec:goal|scope|must-coverage|ac-executable|ambiguity|contradiction|over-specification]`, plan anchors `[plan:ac-uncovered|task-atomic|dependency|reuse|risk|feasibility]`, PR anchors `[AC-xxx]` / `[MUST-NNN]` / `[MUSTNOT-NNN]` / `[R-NNN]` / `[P-N]` / `[test:<name>]` / `[diff:<file>:<line>]`; `[observation:<tag>]` is always permitted. Findings with out-of-domain or no anchor are mechanically demoted to a non-blocking `Observations` section in the review output; Verdict computation excludes Observations. Three demotion tags: `anchor-out-of-domain`, `no-anchor`, and `anchor-requires-spec` (PR review without a linked spec). Anchor parse rule: first bracketed token matching `^\[[^\]]+\]` after stripping leading whitespace.
+- `/ai-driver:review-pr` Step 5 synthesis now runs in two phases: 5a scope fence → 5b cross-reviewer consensus. Step 6 report gains an `### Observations` section between Cross-source findings and Verdict with the literal prose "Verdict computation excludes Observations".
+- `/ai-driver:run-spec` Phase 0 Gating and Phase 1 plan-review Consensus document the scope fence before the consensus table. Both plan-review prompt blocks (subagent + Codex) carry the plan-stage Focus / Out-of-scope / whitelist.
+- `/ai-driver:review-spec` Consensus-and-gating documents the scope fence before the consensus table. Both Layer 1 and Layer 2 prompts carry the spec-stage Focus / Out-of-scope / whitelist.
+- `AGENTS.md` gains a **Scope-fenced reviews** bullet under Key workflows naming the 3 stage whitelists, the 3 demotion tags, the Verdict-exclusion rule, and the reference harness.
+- Prompt prose consistently uses **conformance reviewer** framing instead of the earlier **adversarial reviewer** framing, to align the LLM persona with the fenced-scope contract.
+
+### Added
+
+- `tests/review-synthesis/drift-demotion.sh` — deterministic regression harness for the scope-fence synthesis rule. No LLM invocation. Covers all 4 stage contexts (spec / plan / pr / pr-nospec) with in-domain + out-of-domain + no-anchor + requires-spec inputs; diffs transformed output against expected Main + Observations tables.
+- `tests/review-synthesis/fixtures/{spec,plan,pr,pr-nospec}.md` — 4 fabricated reviewer outputs that exercise the synthesis rule without invoking any LLM.
+
+### Rationale
+
+Observed pattern across prior releases (documented in `logs/v041-scope-fenced-reviews/spec-review.md`): adversarial reviewer prompts are **unbounded mandates** that push the spec / diff beyond its stated goal — v0.3.10 spec review looped 6 Codex rounds; PR #14 Codex flagged historical-spec staleness outside the PR's actual scope. The scope fence is a prompt-layer + synthesis-layer contract that turns each review into a **conformance check against the stage's stated concerns**. Non-conforming findings are preserved in Observations (visible to the human) but excluded from the Verdict. No new commands, no new constitutional rule — this is additive discipline on top of v0.4.0 defenses.
+
 ## [0.4.0] - 2026-04-21
 
 ### Removed
