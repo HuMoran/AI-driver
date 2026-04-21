@@ -161,7 +161,20 @@ Write `logs/<spec-slug>/spec-review.md` containing three sections (Layer 0 / Lay
 
 ### Gating
 
-Build a consensus table keyed by **`(rule_id, normalized location)`** — lowercase rule_id, whitespace-trimmed location, with ±3-line fuzz on `file:line` positions to absorb Codex line-offset drift. Two findings with the same rule_id but genuinely different locations are separate rows, **not** merged. A finding raised by both Layer 1 and Layer 2 on the same `(rule_id, normalized location)` key is marked `dual-raised` and upgraded one severity notch (same pattern as `review-spec.md` / `review-pr.md`).
+Gating runs in two stages: **scope fence** (anchor-based demotion to Observations) followed by **consensus + severity**. Verdict computation excludes Observations.
+
+**Scope fence (v0.4.1+).** Every actionable finding MUST cite an anchor in its `message` cell, parsed as the leading bracketed token matching `^\[[^\]]+\]` after stripping leading whitespace. `[observation:*]` is always permitted.
+
+**Stage whitelist (spec review):** `[spec:goal]`, `[spec:scope]`, `[spec:must-coverage]`, `[spec:ac-executable]`, `[spec:ambiguity]`, `[spec:contradiction]`, `[spec:over-specification]`, `[observation:*]`.
+
+Findings whose anchor is not in the whitelist are demoted to the `Observations` section at severity `Info`, do NOT contribute to the Verdict, and have all original fields preserved byte-for-byte. Demotion tags:
+
+- `anchor-out-of-domain: <anchor>` — anchor from a different stage, unknown, or malformed / non-existent ID
+- `no-anchor` — `message` does not start with a bracketed token
+
+Reference implementation: `tests/review-synthesis/drift-demotion.sh`.
+
+**Consensus + severity.** Build a consensus table keyed by **`(rule_id, normalized location)`** — lowercase rule_id, whitespace-trimmed location, with ±3-line fuzz on `file:line` positions to absorb Codex line-offset drift. Two findings with the same rule_id but genuinely different locations are separate rows, **not** merged. A finding raised by both Layer 1 and Layer 2 on the same `(rule_id, normalized location)` key is marked `dual-raised` and upgraded one severity notch (same pattern as `review-spec.md` / `review-pr.md`).
 
 | Severity | Action |
 |---|---|
@@ -254,6 +267,8 @@ Exactly those three, nothing else. Main session passes `plan.md` as a **path arg
 Write `logs/<spec-slug>/plan-review.md` with three sections: `## Pass 1 — Claude subagent`, `## Pass 2 — Codex`, `## Consensus`. Consensus is keyed by `rule_id + normalized location` (lowercase rule_id, whitespace-trimmed location, ±3-line fuzz for Codex line-offset drift). A finding raised by both passes is marked `dual-raised` and upgraded one severity notch.
 
 Gating is identical to Phase 0: Critical → STOP exit 2; High → `--accept-high` or STOP; Medium → y/N; Low/Info → continue. Degraded-mode string: `CLAUDE-PASS: UNAVAILABLE (<reason>)`. A pass that degrades does not block when the other pass is clean.
+
+**Scope fence (plan review).** Same contract as Phase 0: findings must carry anchors from the plan-review whitelist, else demoted to `Observations`. **Stage whitelist (plan review):** `[plan:ac-uncovered]`, `[plan:task-atomic]`, `[plan:dependency]`, `[plan:reuse]`, `[plan:risk]`, `[plan:feasibility]`, `[observation:*]`. Demotion tags: `anchor-out-of-domain: <anchor>` for cross-stage/unknown anchors, `no-anchor` for missing bracket prefix. Verdict excludes Observations. Reference implementation: `tests/review-synthesis/drift-demotion.sh`.
 
 ## Phase 2: Implement
 

@@ -285,7 +285,25 @@ On failure modes:
 
 ## Step 5: Cross-reviewer synthesis
 
-Build the final finding set:
+Synthesis runs in two stages: (5a) **scope fence** demotes out-of-scope findings into an Observations bucket, (5b) **cross-reviewer consensus** operates on the main findings that survived the fence. Verdict computation excludes Observations.
+
+### Step 5a: Scope fence — anchor-based demotion (v0.4.1+)
+
+Every actionable finding MUST cite an anchor in its `message` cell, parsed as the leading bracketed token matching `^\[[^\]]+\]` after stripping leading whitespace. `[observation:*]` is always permitted and never demoted.
+
+**Stage whitelist (PR review):** `[AC-xxx]`, `[MUST-NNN]`, `[MUSTNOT-NNN]`, `[R-NNN]`, `[P-N]`, `[test:<name>]`, `[diff:<file>:<line>]`, `[observation:<short-tag>]`. When the PR has no linked spec (cleanup/chore PR), `[AC-*]`, `[MUST-*]`, and `[MUSTNOT-*]` are not valid because there is no spec to reference; they demote to `anchor-requires-spec`.
+
+Findings whose anchor is not in the whitelist are demoted to the `Observations` section at severity `Info`, do NOT contribute to the Verdict, and have their original fields (`severity`, `rule_id`, `location`, `message`, `fix_hint`, source — Claude / Codex / existing reviewer) preserved byte-for-byte. A `tag` column records the demotion reason:
+
+- `anchor-out-of-domain: <anchor>` — anchor from a different stage's whitelist, unknown (e.g. `[security]`), or malformed / non-existent ID (e.g. `[AC-7]` wrong digit count, `[AC-100500]` out of range)
+- `no-anchor` — `message` does not start with a bracketed token
+- `anchor-requires-spec: <anchor>` — PR review with no spec loaded; anchor is `[AC-*]`, `[MUST-*]`, or `[MUSTNOT-*]`
+
+Reference implementation: `tests/review-synthesis/drift-demotion.sh` exercises this contract deterministically (no LLM invocation).
+
+### Step 5b: Cross-reviewer consensus
+
+Build the final main-findings set from the surviving in-domain findings:
 
 1. **Triple-consensus (Claude ∩ Codex ∩ existing reviewer)** → severity **CRITICAL** regardless of what each individually rated.
 2. **Dual-consensus (any 2 of 3 sources)** → upgrade one severity notch.

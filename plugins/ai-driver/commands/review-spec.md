@@ -182,7 +182,20 @@ The caller is responsible for prepending `---BEGIN SPEC---\n` and appending `\n-
 
 ## Consensus and gating
 
-After all three layers, build a consensus table keyed by `(rule_id, location)` — **never by `rule_id` alone**. Two findings with the same rule_id but different locations are distinct and must stay on separate rows; only a finding with the same `(rule_id, location)` from both Layer 1 and Layer 2 is marked `dual-raised` (higher confidence, upgraded a severity notch per the review-pr.md precedent).
+Consensus runs in two stages: **scope fence** (anchor-based demotion) followed by **consensus table**. Verdict computation excludes Observations.
+
+**Scope fence (v0.4.1+).** Every actionable finding MUST cite an anchor in its `message` cell, parsed as the leading bracketed token matching `^\[[^\]]+\]` after stripping leading whitespace. `[observation:*]` is always permitted.
+
+**Stage whitelist (spec review):** `[spec:goal]`, `[spec:scope]`, `[spec:must-coverage]`, `[spec:ac-executable]`, `[spec:ambiguity]`, `[spec:contradiction]`, `[spec:over-specification]`, `[observation:*]`.
+
+Findings whose anchor is not in the whitelist are demoted to the `Observations` section at severity `Info`, do NOT contribute to the Verdict, and have all original fields preserved byte-for-byte. Demotion tags:
+
+- `anchor-out-of-domain: <anchor>` — anchor from a different stage, unknown, or malformed / non-existent ID
+- `no-anchor` — `message` does not start with a bracketed token
+
+Reference implementation: `tests/review-synthesis/drift-demotion.sh`.
+
+**Consensus table.** After the scope fence, build a consensus table keyed by `(rule_id, location)` — **never by `rule_id` alone**. Two findings with the same rule_id but different locations are distinct and must stay on separate rows; only a finding with the same `(rule_id, location)` from both Layer 1 and Layer 2 is marked `dual-raised` (higher confidence, upgraded a severity notch per the review-pr.md precedent).
 
 | Severity | Action |
 |---|---|
