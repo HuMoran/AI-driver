@@ -1,0 +1,12 @@
+[
+  {
+    "author": "HuMoran",
+    "createdAt": "2026-04-20T08:02:20Z",
+    "body": "approve R-008 as-is"
+  },
+  {
+    "author": "HuMoran",
+    "createdAt": "2026-04-20T08:12:36Z",
+    "body": "<!-- ai-driver-review -->\n## AI Review Report — PR #8\n\nDual-pass review. Existing reviewer approved R-008. Verdict: APPROVE.\n"
+  }
+]
