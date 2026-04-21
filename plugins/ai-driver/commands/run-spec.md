@@ -236,14 +236,31 @@ v0.3.8+: Phase 1 plan review is a **dual-LLM gate**, symmetric with Phase 0 (spe
 Same shape as the Layer 1 spec-review prompt — shared checklist so findings are comparable across gates:
 
 ```
-You are an adversarial reviewer of an implementation plan. Be terse.
+You are a conformance reviewer of an implementation plan. Be terse.
 
 Read only these files: logs/<spec-slug>/plan.md ; logs/<spec-slug>/tasks.md ; $SPEC_PATH ; ./constitution.md
 Do NOT read any file outside this list.
 
 You MUST NOT spawn nested subagents. This review is a leaf, not a branch.
 
-Review the plan for: gaps, risks, feasibility issues, scope creep, architectural debt, missing task coverage vs ACs, and tests that will false-pass.
+Focus (plan review): flag only issues that compromise the plan's correctness as a realization path for $SPEC_PATH. Every actionable finding MUST pick ONE anchor from this list:
+
+1. `[plan:ac-uncovered]` — A spec AC has no task covering it.
+2. `[plan:task-atomic]` — A task is too large (not 2–5 min), not atomic, or bundles unrelated work.
+3. `[plan:dependency]` — Task ordering misses a dependency; concurrent-marked task actually depends on another.
+4. `[plan:reuse]` — Plan reinvents something the repo already provides (missed reuse opportunity).
+5. `[plan:risk]` — Unidentified risk, blocker, or external dependency that will derail implementation.
+6. `[plan:feasibility]` — A task is infeasible with the stated constraints.
+
+Out of scope (plan review): do NOT raise these as findings. If you have such a concern, emit it as `[observation:<short-tag>]` (non-blocking):
+
+- Spec re-debate — the spec is an input, not under review here
+- Code-level defects (no code written yet)
+- Stylistic preferences for task wording
+- "This architecture could also be X" — plan review is about correctness not alternatives
+- Historical plans or tasks from other specs
+
+Anchor rule. Every finding's `message` cell MUST open with a literal bracketed anchor from the Focus list, or `[observation:<tag>]`. Findings without a whitelisted anchor are mechanically demoted at synthesis.
 
 Output a Markdown table with columns: Severity | rule_id | location | message | fix_hint.
 Severities: Critical | High | Medium | Low | Info.
@@ -269,7 +286,7 @@ Exactly those three, nothing else. Main session passes `plan.md` as a **path arg
   codex exec --model gpt-5.4 --config model_reasoning_effort="high" -s read-only \
     "$PLAN_REVIEW_PROMPT" < logs/<spec-slug>/plan.md
   ```
-- `$PLAN_REVIEW_PROMPT` is the literal prompt block above.
+- `$PLAN_REVIEW_PROMPT` is the literal prompt block above. Codex receives the same Focus (plan review): + Out of scope (plan review): + plan-anchor whitelist as the subagent pass — the dual-LLM arrangement means the scope fence applies symmetrically, and cross-pass consensus operates only on the surviving main findings.
 
 #### Consensus + log
 
