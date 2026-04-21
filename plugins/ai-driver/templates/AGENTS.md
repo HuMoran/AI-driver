@@ -32,7 +32,7 @@ After a major AI-driver framework upgrade, or if the project starts behaving une
 - `.github/workflows/` — auto-release + CI
 
 ## Plugin-provided resources
-- Commands: `/ai-driver:run-spec`, `/ai-driver:review-pr`, `/ai-driver:fix-issues`, `/ai-driver:run-tests`, `/ai-driver:deploy`
+- Commands: `/ai-driver:run-spec`, `/ai-driver:review-pr`, `/ai-driver:fix-issues`, `/ai-driver:deploy`
 - Language rules: inside the plugin at `${CLAUDE_PLUGIN_ROOT}/rules/<lang>.md`
   Covers Rust / Python / TypeScript / Go / Flutter format/lint/test/build commands
 
