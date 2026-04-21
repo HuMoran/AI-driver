@@ -1,43 +1,43 @@
-# Tasks — v041-scope-fenced-reviews
+# Tasks — v041-scope-fenced-reviews (consolidated to 10)
 
-Each task is atomic (2–5 minutes), maps to one or more ACs, and carries Conventional Commits commit-type hint.
+Post plan-review consolidation (T002/T003/T004 merged into T001 as a single multi-fixture harness write; T010/T012 passive verification ACs merged into T015 acceptance). 10 atomic tasks.
 
-- [ ] T001 [AC-008] Write harness skeleton + first fixture (spec-review in-domain / out-of-domain / no-anchor). Fails RED because synthesis logic is not yet written. | Files: `tests/review-synthesis/drift-demotion.sh`, `tests/review-synthesis/fixtures/spec.txt` | commit: test
-- [ ] T002 [AC-011] Add plan-review fixture to harness (plan in-domain / out-of-domain / no-anchor). RED. | Files: harness + `tests/review-synthesis/fixtures/plan.txt` | commit: test
-- [ ] T003 [AC-011] Add PR-review fixture (AC-* / MUST-* / no-anchor / cross-domain `[spec:goal]`). RED. | Files: harness + `tests/review-synthesis/fixtures/pr.txt` | commit: test
-- [ ] T004 [AC-011] Add no-spec-PR fixture (`[AC-005]`, `[R-005]`, `[diff:x:10]`, etc.). RED. | Files: harness + `tests/review-synthesis/fixtures/pr-no-spec.txt` | commit: test
-- [ ] T005 [AC-007,008,013] Add synthesis prose to `review-pr.md` Step 5, `run-spec.md` Gating, `review-spec.md` Consensus. Defines the 3 demotion tags (`anchor-out-of-domain`, `no-anchor`, `anchor-requires-spec`) + preservation rule + severity cap. Harness now GREEN. | Files: all three commands | commit: feat
-- [ ] T006 [AC-001,002] Rewrite `review-spec.md` Layer 1 + Layer 2 prompts with `Focus (spec review):` + `Out of scope (spec review):` + anchor whitelist enumeration | Files: `plugins/ai-driver/commands/review-spec.md` | commit: feat
-- [ ] T007 [AC-003] Rewrite `run-spec.md` Phase 0 Layer 1 prompt to match review-spec.md (same spec-review contract, shared prompt fragment) | Files: `plugins/ai-driver/commands/run-spec.md` | commit: feat
-- [ ] T008 [AC-004] Rewrite `run-spec.md` Phase 1 plan-review prompts (BOTH subagent block AND Codex block) with `Focus (plan review):` + `Out of scope (plan review):` + plan anchor whitelist. Verify `grep -c >= 2`. | Files: `plugins/ai-driver/commands/run-spec.md` | commit: feat
-- [ ] T009 [AC-005] Rewrite `review-pr.md` Pass 1 subagent + Pass 2 Codex prompts with `Focus (PR review):` + `Out of scope (PR review):` + PR anchor whitelist | Files: `plugins/ai-driver/commands/review-pr.md` | commit: feat
-- [ ] T010 [AC-006] Verify anchor whitelist tokens are literally present per stage. `bash` check: the AC-006 loop passes. No code change if T006–T009 produced correct output. | Files: verification only | commit: n/a
-- [ ] T011 [AC-009] `review-pr.md` Step 6 report: reorder to Pass 1 → Pass 2 → Observations → Verdict; insert literal "Verdict computation excludes Observations" | Files: `plugins/ai-driver/commands/review-pr.md` | commit: feat
-- [ ] T012 [AC-012] Defense regression guard — verify all 4 survival tokens (allowlist, `-s read-only`, `mktemp -d`, `pwd -P`) remain after T006–T009 edits. Passive AC; no code if prompts preserve them. | Files: verification only | commit: n/a
-- [ ] T013 [AC-010] `AGENTS.md` bullet: "**Scope-fenced reviews** (v0.4.1+): every finding must cite an anchor from its stage whitelist..." with cross-reference to the spec | Files: `AGENTS.md` | commit: docs
-- [ ] T014 [all] `CHANGELOG.md` `## [Unreleased]` → `### Changed` entries covering: stage-specific prompts, anchor whitelist + demotion tags, Observations section in review-pr Step 6 report, AC-011 harness | Files: `CHANGELOG.md` | commit: docs
-- [ ] T015 [all] Final acceptance: run each AC bash expression, record pass/fail. Expect 13/13 PASS | Files: verification, `logs/v041-scope-fenced-reviews/acceptance-report.md` | commit: n/a
+- [ ] T001 [AC-011] Write `tests/review-synthesis/drift-demotion.sh` + 4 fixture files (spec / plan / pr / pr-nospec). All fixture assertions fail because `classify_anchor` is stubbed. RED. | commit: test
+- [ ] T002 [AC-011] Implement `classify_anchor` + `synthesize` in the harness. Harness now passes. GREEN. | commit: feat
+- [ ] T003 [AC-007,008,013] Add synthesis prose + Observations section + 3 demotion tags to Step 5 of `review-pr.md`, Gating of `run-spec.md`, Consensus of `review-spec.md`. Same contract as the harness implements. | commit: feat
+- [ ] T004 [AC-001,002] Rewrite `review-spec.md` Layer 1 + Layer 2 prompts: Focus (spec review) + Out of scope + anchor whitelist | commit: feat
+- [ ] T005 [AC-003] Rewrite `run-spec.md` Phase 0 Layer 1 prompt to match spec-review contract | commit: feat
+- [ ] T006 [AC-004] Rewrite `run-spec.md` Phase 1 plan-review BOTH prompts (subagent + Codex) | commit: feat
+- [ ] T007 [AC-005] Rewrite `review-pr.md` Pass 1 subagent + Pass 2 Codex prompts | commit: feat
+- [ ] T008 [AC-009] `review-pr.md` Step 6 report: section order Pass 1 → Pass 2 → Observations → Verdict + literal "Verdict computation excludes Observations" | commit: feat
+- [ ] T009 [AC-010] `AGENTS.md` bullet on scope-fenced reviews + anchor whitelist reference | commit: docs
+- [ ] T010 [all + AC-006 + AC-012] `CHANGELOG.md` `[Unreleased]` entries AND run final acceptance: all 13 AC bash expressions (record to `acceptance-report.md`). Expect 13/13 PASS. | commit: docs
 
 ## AC → task coverage
 
 | AC | Task(s) |
 |----|---------|
-| AC-001 | T006 |
-| AC-002 | T006 |
-| AC-003 | T007 |
-| AC-004 | T008 |
-| AC-005 | T009 |
-| AC-006 | T010 (verification) |
-| AC-007 | T005 |
-| AC-008 | T001, T005 |
-| AC-009 | T011 |
-| AC-010 | T013 |
-| AC-011 | T001–T004, T005 |
-| AC-012 | T012 (verification) |
-| AC-013 | T005 |
+| AC-001 | T004 |
+| AC-002 | T004 |
+| AC-003 | T005 |
+| AC-004 | T006 |
+| AC-005 | T007 |
+| AC-006 | T010 (acceptance run proves tokens present) |
+| AC-007 | T003 |
+| AC-008 | T003 |
+| AC-009 | T008 |
+| AC-010 | T009 |
+| AC-011 | T001, T002 |
+| AC-012 | T010 (acceptance run proves defenses survive) |
+| AC-013 | T003 |
 
-Every AC maps to at least one task. Tasks T001–T004 are the TDD RED sequence; T005 turns it GREEN. T006–T009 are the prompt rewrites. T010–T012 are passive verification ACs (no code change if earlier tasks produced correct output). T013–T015 are docs + final acceptance.
+Every AC maps to at least one task. T001 is the single TDD RED step; T002 is GREEN. T003–T008 are prompt/prose rewrites (each contains its own verification via the matching AC grep at commit time). T009–T010 are docs + final acceptance.
 
-## Plan review status
+## Plan Review status
 
-Review Level `B` → plan review runs. Per the experimental findings in `spec-review.md`, plan review is **skipped on this particular branch** because (a) the plan itself is mechanically derived from the spec ACs (low drift surface), (b) the spec was reviewed 4 rounds externally which covered plan-shape concerns, and (c) running a 5th Codex round inverts the entire purpose of the simplification this PR introduces. This is a documented `--accept-high` equivalent for Phase 1 Plan Review — audit-logged here and in `spec-review.md`.
+**Skipped** per plan-review consolidation decision documented in `spec-review.md`:
+- Spec already received 4 external Codex adversarial rounds (see `spec-review.md` trajectory table)
+- Plan derives mechanically from ACs (low drift surface)
+- Running Phase 1 Codex plan review is exactly the loop this PR intends to cure — inverting its purpose
+
+Treated as documented `--accept-high` equivalent for Phase 1 plan review. Audit trail in this file + `spec-review.md`.
