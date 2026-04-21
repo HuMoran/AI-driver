@@ -57,8 +57,7 @@ cp specs/_template.spec.md specs/my-feature.spec.md
 | Command                         | Purpose                                                   |
 | ------------------------------- | --------------------------------------------------------- |
 | `/ai-driver:init`               | Scaffold AI-driver files into the current project         |
-| `/ai-driver:run-spec <file>`    | Execute a spec end-to-end: **Phase 0 spec review** → plan → implement → test → PR |
-| `/ai-driver:review-spec <file>` | Standalone three-layer spec review (mechanical + Claude + Codex); iterate on a draft before cutting a branch |
+| `/ai-driver:run-spec <file>`    | Execute a spec end-to-end: **Phase 0 spec review** → plan → implement → test → PR. Pass `--review-only` to run Phase 0 standalone (draft iteration — no branch cut). |
 | `/ai-driver:review-pr [number]` | Dual-blind PR review (Claude + Codex); reads all existing reviews/comments (incl. Copilot) |
 | `/ai-driver:merge-pr [number]`  | Merge PR, update CHANGELOG, tag, trigger release          |
 | `/ai-driver:doctor`             | Read-only health check — detects drift and misconfiguration |
@@ -73,8 +72,7 @@ AI-driver commands do **not** hard-code a model or effort level — you stay in 
 
 | Command                 | Suggested session setting                                       |
 | ----------------------- | --------------------------------------------------------------- |
-| `/ai-driver:run-spec`   | Opus + `xhigh` effort (multi-step planning, TDD, orchestration) |
-| `/ai-driver:review-spec` | Opus + `xhigh` effort (adversarial reading of the spec) |
+| `/ai-driver:run-spec`   | Opus + `xhigh` effort (multi-step planning, TDD, orchestration). `--review-only` also benefits from Opus (adversarial spec reading). |
 | `/ai-driver:review-pr`  | Opus + `xhigh` effort (adversarial deep-read of the diff)       |
 | `/ai-driver:merge-pr`   | Sonnet or session default (deterministic: rewrite CHANGELOG, merge, tag) |
 | `/ai-driver:doctor`     | Haiku or session default (pure read-only — file checks + diff) |
@@ -144,7 +142,7 @@ The three-gate pipeline (v0.3.6+, dual-LLM uniform as of v0.3.8) catches defects
 
 Claude passes run inside **sandboxed subagents** (v0.3.8+): the untrusted content never enters the main session's prompt. Codex passes dispatch via Claude Code's `Bash(run_in_background=true)` pattern — the completion notification arrives automatically on the next turn, no polling, no silently dropped reviews.
 
-Standalone `/ai-driver:review-spec` lets you pre-flight a draft spec without cutting a branch — same Layer 0 + subagent + Codex as Gate 1.
+`/ai-driver:run-spec <spec> --review-only` lets you pre-flight a draft spec without cutting a branch — same Layer 0 + subagent + Codex as Gate 1, exits after Phase 0.
 
 ## Standards
 

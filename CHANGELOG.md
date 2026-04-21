@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.4.3] - 2026-04-21
+
+### Removed
+
+- **`/ai-driver:review-spec` command** (237 lines). The standalone spec-review entry point has been folded into `/ai-driver:run-spec <spec> --review-only`, which runs the same three-layer review (Layer 0 mechanical + Layer 1 Claude subagent + Layer 2 Codex) with the same anchor whitelist / Observations demotion contract from v0.4.1. The `--review-only` flag exits after Phase 0 (no branch cut, no implementation). Rationale: `/ai-driver:run-spec` Phase 0 was the reference implementation all along — `review-spec.md` duplicated ~90% of the logic for a second entry point. Command surface drops from 8 to 7.
+
+### Changed
+
+- `/ai-driver:run-spec` gains `--review-only` flag + a complete inline "Layer 2 prompt (literal)" block (previously referenced from `review-spec.md`). The Phase 0 / Phase 1 boundary now has an explicit `--review-only` exit gate.
+- `/ai-driver:review-pr` §2c path-gate cross-reference updated — no longer names `review-spec`; `/ai-driver:run-spec` is now the sole owner of the spec path gate.
+- `AGENTS.md` Three-gate workflow bullet updates the standalone-spec-review reference to `/ai-driver:run-spec <spec> --review-only`.
+- `README.md` / `README.zh-CN.md` Commands tables and Recommended-model tables drop the `review-spec` rows; the `run-spec` row documents `--review-only` inline.
+
+### Note
+
+One behavioural change worth flagging: `review-spec.md` had a frontmatter `allowed-tools` that excluded `Write` and `Bash(mkdir:*)`, making the no-mutation guarantee enforced at the tool-permission layer. `--review-only` is a **behavioural** contract — the command self-stops before Phase 1's first git mutation, but the permission layer cannot prevent a rogue LLM from writing. For a dogfooding tool this is acceptable; CI pipelines that need hard no-mutation should wrap the invocation in a sandbox.
+
 ## [0.4.2] - 2026-04-21
 
 ### Removed
