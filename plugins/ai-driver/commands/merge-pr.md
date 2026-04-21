@@ -307,6 +307,34 @@ git add CHANGELOG.md
 [ -f ./.claude-plugin/plugin.json ] && git add ./.claude-plugin/plugin.json || true
 ```
 
+## Step 2.5: Governance deferral audit (only when `--defer` fires)
+
+Runs iff `GOV_DEFER_R` was exported by Step 0b.3 — i.e., the PR has a rule-scoped approval but no amendment commit on the branch, and the maintainer passed `--defer "<rationale>"`. Writes **one** idempotent PR comment as the single audit sink (simpler than the three-sink shape from v0.3.9 discussions — one sink is enough to reconstruct the deferral chain). No CHANGELOG section is added beyond what Step 2a already wrote, and no merge-commit trailer is set (the comment is the canonical record).
+
+```bash
+if [ -n "${GOV_DEFER_R:-}" ]; then
+  # Sanitize rationale once: escape shell/markdown meta characters before interpolation.
+  # Length + single-line contract was already enforced in Step 0b.3.
+  SAFE_RATIONALE=$(printf '%s' "$DEFER_RATIONALE" | sed -e 's/\\/\\\\/g' -e 's/`/\\`/g' -e 's/|/\\|/g' -e 's/\$/\\$/g' -e 's/</\\</g' -e 's/>/\\>/g' -e 's/"/\\"/g' -e "s/'/\\\\'/g")
+
+  MARKER="<!-- ai-driver-defer:$GOV_DEFER_R -->"
+  # Idempotent retry: if a previous run already posted the marker, skip.
+  if gh pr view "$PR" --json comments --jq '.comments[].body' | grep -Fq "$MARKER"; then
+    echo "governance deferral comment already present for $GOV_DEFER_R; skipping (idempotent retry)"
+  else
+    # Write via --body-file (stdin) to avoid shell-quoting pitfalls.
+    gh pr comment "$PR" --body-file - <<EOF
+$MARKER
+Governance deferral ($GOV_DEFER_R): $SAFE_RATIONALE
+
+Follow-up: a constitution-only PR will land \`docs(constitution): add $GOV_DEFER_R — approved by @<login> in PR #$PR\` (see AGENTS.md §Governance for the commit template).
+EOF
+  fi
+fi
+```
+
+Recovery: if `gh pr comment` fails (network blip), the CHANGELOG rewrite from Step 2 is already staged but not pushed; the marker is not in the PR, so a re-run of `merge-pr` will retry the comment cleanly. The idempotency marker ensures double-run safety.
+
 ## Step 3: Commit CHANGELOG + push to PR branch (skip if `--no-release`)
 
 ```bash
