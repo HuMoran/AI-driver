@@ -390,6 +390,14 @@ Compose the report. The FIRST line of the body MUST be the self-identification m
 
 [Issues flagged by 2+ sources — highest priority]
 
+### Observations
+
+(Findings mechanically demoted by Step 5a scope fence. These are non-blocking — Verdict computation excludes Observations. Included here so the human sees what a reviewer wanted to say; original fields preserved byte-for-byte.)
+
+| Severity | rule_id | location | message | fix_hint | source | tag |
+|---|---|---|---|---|---|---|
+| Info | ... | ... | ... | ... | Claude / Codex / existing | anchor-out-of-domain: [...] / no-anchor / anchor-requires-spec: [...] |
+
 ### Verdict: APPROVE / REQUEST_CHANGES / NEEDS_HUMAN
 
 [One-line justification. If an existing reviewer raised a CRITICAL / HIGH that the diff does not address, verdict is REQUEST_CHANGES regardless of Claude/Codex output.]
