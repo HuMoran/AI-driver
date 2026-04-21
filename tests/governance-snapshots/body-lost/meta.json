@@ -1,0 +1,11 @@
+{
+  "number": 999,
+  "baseRefName": "main",
+  "body": "## Summary\n\nQuietly refactors a couple of wording improvements. No governance content in this body.\n",
+  "files": [
+    "AGENTS.md",
+    "constitution.md",
+    "plugins/ai-driver/templates/constitution.md"
+  ],
+  "admin_allowlist": ["HuMoran"]
+}

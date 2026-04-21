@@ -23,6 +23,7 @@ Rewrites `CHANGELOG.md` (Unreleased → next version block), commits on the PR b
 - `--no-release` — merge only. Do NOT read `[Unreleased]`, do NOT rewrite `CHANGELOG.md`, do NOT tag. Mutually exclusive with `--version` and `--bump`.
 - `--squash` — use `gh pr merge --squash` instead of the default `--merge`.
 - `--no-check` — skip the mergeable + CI checks.
+- `--defer "<rationale>"` — only meaningful on PRs that propose an `R-NNN` constitution amendment in the PR body AND whose branch does **not** yet contain the corresponding `docs(constitution): add R-NNN …` commit (governance "Case B" shape, i.e., the v0.3.9 shape). Allows merging the feature PR while explicitly deferring the approved amendment to a follow-up constitution-only PR. `<rationale>` must be ≤ 200 chars, single-line (no `\n` / `\r`); `` ` ``, `|`, `$`, `<`, `>`, `\`, `"`, `'` are escaped before interpolation into the audit comment. Longer or multi-line → Step 0b abort with no writes. Mutually meaningless without a governance proposal in the body (Step 0b skips audit write in that case). See §Step 0b.3 (validation) and §Step 2.5 (audit sink).
 - `--dry-run` — print the planned actions and exit **before any write, git mutation, git-remote operation, or network call; local read-only git commands may run during preflight (e.g., `git status`, `git describe --tags`)**.
 
 ## Step 0a: Local preflight (no network, no git-remote calls)
@@ -109,6 +110,127 @@ These require network and a working `gh` auth:
 2. **PR mergeability** (skip if `--no-check`):
    - `gh pr view <n> --json mergeable --jq .mergeable` must equal `"MERGEABLE"`.
    - `gh pr checks <n>` — no REQUIRED check in FAILURE state.
+3. **Governance preflight (validation-only — no writes).** Closes the workflow gap that caused v0.3.9 (where an approved `R-009` amendment shipped without merging the `docs(constitution):` commit).
+
+   **Goal**: any PR that proposes an `R-NNN` constitution amendment in its body, OR changes `constitution.md` / its template mirror, must satisfy three conditions or fail-closed here. This step MUST write nothing (no comment, no file, no commit); actual audit writes live in Step 2.5.
+
+   **Canonical abort messages** (exact substrings): the preflight prints one of
+
+   - `ERROR: R-NNN proposed in PR body but no "approve R-NNN" / "同意R-NNN" comment found from an admin/maintainer.` (no approval)
+   - `ERROR: R-NNN approved by @<login> but no "docs(constitution): add R-NNN …" commit on this branch.` (approved but commit not landed — recoverable with `--defer "<rationale>"`)
+   - `ERROR: this PR changes constitution.md … but the PR body does not contain an R-NNN proposal block.` (file changed, body proposal absent)
+
+   ```bash
+   # Fetch once; data treated as untrusted, only regex-matched.
+   GOV_PR_JSON=$(gh pr view "$PR" --json baseRefName,body,files,comments)
+   GOV_BASE=$(printf '%s' "$GOV_PR_JSON" | jq -r '.baseRefName')
+   GOV_BODY=$(printf '%s' "$GOV_PR_JSON" | jq -r '.body')
+   GOV_FILES=$(printf '%s' "$GOV_PR_JSON" | jq -r '.files[].path')
+   GOV_COMMENTS=$(printf '%s' "$GOV_PR_JSON" | jq -c '{comments: .comments}')
+
+   # 3.1 Two parallel triggers
+   GOV_PROPOSALS=$(printf '%s\n' "$GOV_BODY" \
+     | grep -Eo '^####?[[:space:]]+R-[0-9]+:|^\*\*R-[0-9]+:' \
+     | grep -Eo 'R-[0-9]+' | sort -u || true)
+   GOV_FILE_TRIGGER=no
+   if printf '%s\n' "$GOV_FILES" | grep -qxE '(plugins/ai-driver/templates/)?constitution\.md'; then
+     GOV_FILE_TRIGGER=yes
+   fi
+
+   # Non-governance PR → skip.
+   if [ -z "$GOV_PROPOSALS" ] && [ "$GOV_FILE_TRIGGER" = no ]; then
+     : # short-circuit; continue to Step 2
+   elif [ -z "$GOV_PROPOSALS" ] && [ "$GOV_FILE_TRIGGER" = yes ]; then
+     echo "ERROR: this PR changes constitution.md (or its template mirror) but the PR body does not contain an R-NNN proposal block. Either add the proposal block to the PR body and re-request approval, or revert the constitution changes." >&2
+     exit 2
+   else
+     # 3.2 Admin/maintain allowlist — paginate the repo's collaborators.
+     # Endpoint shape: `/repos/{owner}/{repo}/collaborators` — the literal
+     # `{owner}/{repo}` placeholders are NOT substituted by `gh api`; we
+     # interpolate the resolved owner/repo slugs below to avoid a 404.
+     GOV_REPO_FULL=$(gh repo view --json nameWithOwner --jq '.nameWithOwner')
+     GOV_OWNER=${GOV_REPO_FULL%/*}
+     GOV_REPO=${GOV_REPO_FULL#*/}
+     GOV_ALLOW=$(gh api --paginate "/repos/$GOV_OWNER/$GOV_REPO/collaborators" \\
+       --jq '.[] | select(.role_name == "admin" or .role_name == "maintain") | .login')
+
+     git fetch origin "$GOV_BASE" --quiet
+
+     # Pre-loop: validate --defer rationale format once (before per-proposal checks).
+     if [ -n "${DEFER_RATIONALE:-}" ]; then
+       if [ "${#DEFER_RATIONALE}" -gt 200 ]; then
+         echo "ERROR: --defer rationale must be ≤ 200 chars; got ${#DEFER_RATIONALE}" >&2; exit 2
+       fi
+       case "$DEFER_RATIONALE" in *$'\n'*|*$'\r'*)
+         echo "ERROR: --defer rationale must be single-line (no newlines)" >&2; exit 2 ;;
+       esac
+     fi
+
+     # 3.3 Per-proposal check.
+     GOV_DEFER_LIST=""
+     for R in $GOV_PROPOSALS; do
+       # 3.3a Bilingual rule-scoped approval. Body normalization:
+       #   - delete fenced-block content (``` / ~~~)
+       #   - delete lines matching ^\s*> (blockquote)
+       # First non-blank remaining line must match ^\s*(approve|同意)\s*R-NNN\b
+       APPROVER=$(printf '%s' "$GOV_COMMENTS" | jq -r --arg R "$R" --argjson allow "$(printf '%s\n' "$GOV_ALLOW" | jq -R . | jq -s .)" '
+         .comments[]
+         | select(.author.login as $a | $allow | index($a))
+         | . as $c
+         | ($c.body
+            | split("\n")
+            | reduce .[] as $line ({out: [], in_fence: false};
+                if ($line | test("^[[:space:]]*(```|~~~)"))
+                then .in_fence = (.in_fence | not)
+                elif .in_fence then .
+                else .out += [$line] end)
+            | .out
+            | map(select(test("^[[:space:]]*>") | not))
+            | map(select(test("^[[:space:]]*$") | not))
+            | .[0] // ""
+            | ascii_downcase | gsub("^[[:space:]]+|[[:space:]]+$"; "")
+           ) as $first
+         | select($first | test("^(approve|同意)[[:space:]]*" + ($R | ascii_downcase) + "\\b"))
+         | $c.author.login
+       ' | head -n 1)
+
+       # 3.3b Amendment commit on this branch (subject prefix; suffix advisory).
+       # Pathspec omitted intentionally: both root constitution.md and the template
+       # mirror are accepted — subject match is the canonical gate.
+       HAS_COMMIT=no
+       if git log --format='%s' "origin/$GOV_BASE..HEAD" \\
+          | grep -Eq "^docs\\(constitution\\): add $R "; then
+         HAS_COMMIT=yes
+       fi
+
+       # 3.3c Decision tree (fail-closed).
+       if [ -z "$APPROVER" ]; then
+         printf 'ERROR: %s proposed in PR body but no "approve %s" / "同意%s" comment found from an admin/maintainer. Obtain approval first, or remove the %s block from the PR body before merging.\n' "$R" "$R" "$R" "$R" >&2
+         exit 2
+       fi
+       if [ "$HAS_COMMIT" = no ]; then
+         if [ -n "${DEFER_RATIONALE:-}" ]; then
+           GOV_DEFER_LIST="${GOV_DEFER_LIST:+$GOV_DEFER_LIST }$R"
+         else
+           printf 'ERROR: %s approved by @%s but no "docs(constitution): add %s …" commit on this branch. Add the commit now (see AGENTS.md §Governance for the template), or pass --defer "<rationale>" to defer the amendment to a follow-up PR.\n' "$R" "$APPROVER" "$R" >&2
+           exit 2
+         fi
+       fi
+     done
+
+     # Multi-defer guard: --defer covers exactly one R-NNN amendment at a time.
+     if [ -n "$GOV_DEFER_LIST" ]; then
+       DEFER_COUNT=$(printf '%s\n' $GOV_DEFER_LIST | wc -w | tr -d ' ')
+       if [ "$DEFER_COUNT" -gt 1 ]; then
+         printf 'ERROR: --defer can defer only one R-NNN amendment at a time; found %s proposals needing deferral (%s). Land each amendment in a separate PR.\n' "$DEFER_COUNT" "$GOV_DEFER_LIST" >&2
+         exit 2
+       fi
+       export GOV_DEFER_R="$GOV_DEFER_LIST"  # signal Step 2.5 to write the audit comment
+     fi
+   fi
+   ```
+
+   Note: this is **validation only**. Even with `--defer`, no PR comment is written here. The write happens in Step 2.5 after CHANGELOG rewrite succeeds, so a CHANGELOG failure does not leave an orphan audit comment.
 
 ## Step 2: Rewrite CHANGELOG.md + bump plugin manifests (skip if `--no-release`)
 
@@ -207,6 +329,39 @@ git add CHANGELOG.md
 [ -f ./.claude-plugin/marketplace.json ] && git add ./.claude-plugin/marketplace.json || true
 [ -f ./.claude-plugin/plugin.json ] && git add ./.claude-plugin/plugin.json || true
 ```
+
+## Step 2.5: Governance deferral audit (only when `--defer` fires)
+
+Runs iff `GOV_DEFER_R` was exported by Step 0b.3 — i.e., the PR has a rule-scoped approval but no amendment commit on the branch, and the maintainer passed `--defer "<rationale>"`. Writes **one** idempotent PR comment as the single audit sink (simpler than the three-sink shape from v0.3.9 discussions — one sink is enough to reconstruct the deferral chain). No CHANGELOG section is added beyond what Step 2a already wrote, and no merge-commit trailer is set (the comment is the canonical record).
+
+```bash
+if [ -n "${GOV_DEFER_R:-}" ]; then
+  # Sanitize rationale once: escape shell/markdown meta characters before interpolation.
+  # Length + single-line contract was already enforced in Step 0b.3.
+  SAFE_RATIONALE=$(printf '%s' "$DEFER_RATIONALE" | sed -e 's/\\/\\\\/g' -e 's/`/\\`/g' -e 's/|/\\|/g' -e 's/\$/\\$/g' -e 's/</\\</g' -e 's/>/\\>/g' -e 's/"/\\"/g' -e "s/'/\\\\'/g")
+
+  MARKER="<!-- ai-driver-defer:$GOV_DEFER_R -->"
+  # Idempotent retry: check that a previous run by THIS actor already posted the marker.
+  # Verify both marker presence AND self-authorship to prevent a collaborator from
+  # pre-seeding the marker and suppressing the real audit comment.
+  BOT_LOGIN=$(gh api /user --jq .login)
+  if gh pr view "$PR" --json comments \\
+       --jq '.comments[] | select(.author.login == "'"'$BOT_LOGIN'"'") | .body' \\
+       | grep -Fq "$MARKER"; then
+    echo "governance deferral comment already present for $GOV_DEFER_R; skipping (idempotent retry)"
+  else
+    # Write via --body-file (stdin) to avoid shell-quoting pitfalls.
+    gh pr comment "$PR" --body-file - <<EOF
+$MARKER
+Governance deferral ($GOV_DEFER_R): $SAFE_RATIONALE
+
+Follow-up: a constitution-only PR will land \`docs(constitution): add $GOV_DEFER_R — approved by @<login> in PR #$PR\` (see AGENTS.md §Governance for the commit template).
+EOF
+  fi
+fi
+```
+
+Recovery: if `gh pr comment` fails (network blip), the CHANGELOG rewrite from Step 2 is already staged but not pushed; the marker is not in the PR, so a re-run of `merge-pr` will retry the comment cleanly. The idempotency marker ensures double-run safety.
 
 ## Step 3: Commit CHANGELOG + push to PR branch (skip if `--no-release`)
 

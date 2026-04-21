@@ -1,0 +1,15 @@
+{
+  "number": 8,
+  "baseRefName": "main",
+  "body": "## Summary\n\nAdds Phase 0 spec review. Every spec.md passes three-layer adversarial review before run-spec proceeds.\n\n### R-008: Spec Input Review (proposed constitution amendment)\n\nEvery spec.md, whether human-written or AI-generated, MUST pass Phase 0 spec review before /ai-driver:run-spec proceeds to Phase 1. Spec review is unconditional.\n\n**Approval gate:** reply `approve R-008 as-is` to accept, `reject R-008: <reason>` to reject.\n",
+  "files": [
+    "AGENTS.md",
+    "CHANGELOG.md",
+    "constitution.md",
+    "plugins/ai-driver/commands/review-spec.md",
+    "plugins/ai-driver/commands/run-spec.md",
+    "plugins/ai-driver/templates/constitution.md",
+    "specs/v036-spec-review.spec.md"
+  ],
+  "admin_allowlist": ["HuMoran"]
+}

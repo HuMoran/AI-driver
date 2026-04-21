@@ -1,0 +1,16 @@
+{
+  "number": 11,
+  "baseRefName": "main",
+  "body": "## Summary\n\nAll three review gates now run Claude in a sandboxed subagent. Gate 3 uses stage-then-read ingestion. Codex dispatches via Bash(run_in_background=true).\n\n### R-009: Review Runs In A Sandbox Executor (proposed constitution amendment)\n\nEvery AI review in this framework MUST run inside a sandboxed executor — a Claude Code subagent for the in-session Claude pass, `codex exec` for the external pass. Main-session inline review is prohibited.\n\n**Approval gate:** reply `approve R-009 as-is` to accept, `reject R-009: <reason>` to reject.\n",
+  "files": [
+    "AGENTS.md",
+    "CHANGELOG.md",
+    "plugins/ai-driver/commands/review-pr.md",
+    "plugins/ai-driver/commands/review-spec.md",
+    "plugins/ai-driver/commands/run-spec.md",
+    ".github/scripts/injection-lint.sh",
+    "tests/injection-lint-cases/run.sh",
+    "specs/v038-subagent-reviews.spec.md"
+  ],
+  "admin_allowlist": ["HuMoran"]
+}

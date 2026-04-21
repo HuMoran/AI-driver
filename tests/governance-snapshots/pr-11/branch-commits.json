@@ -1,0 +1,8 @@
+[
+  {"sha": "e1e2e3e4", "subject": "docs(specs): revise v038 spec per Codex round 1"},
+  {"sha": "e2e3e4e5", "subject": "docs(specs): revise v038 per Codex round 2"},
+  {"sha": "e3e4e5e6", "subject": "feat(subagent-reviews): migrate all 3 review gates to subagent + stage-then-read"},
+  {"sha": "e4e5e6e7", "subject": "fix(injection-lint): regenerate 4 patches against v0.3.8 review-pr.md"},
+  {"sha": "e5e6e7e8", "subject": "fix: address Codex Pass 2 on PR #11 (3 High + 2 Medium)"},
+  {"sha": "e6e7e8e9", "subject": "chore(release): v0.3.8"}
+]

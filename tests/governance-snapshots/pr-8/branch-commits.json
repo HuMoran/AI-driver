@@ -1,0 +1,6 @@
+[
+  {"sha": "a1b2c3d4", "subject": "docs(specs): add v0.3.6 spec-review spec"},
+  {"sha": "b2c3d4e5", "subject": "feat(spec-review): land Phase 0 spec review"},
+  {"sha": "c3d4e5f6", "subject": "docs(constitution): add R-008 Spec Input Review (approved by @HuMoran in PR #8)"},
+  {"sha": "d4e5f6a1", "subject": "fix: address Codex round-1 on PR #8"}
+]
