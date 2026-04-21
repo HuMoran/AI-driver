@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.4.3] - 2026-04-21
+
 ### Removed
 
 - **`/ai-driver:review-spec` command** (237 lines). The standalone spec-review entry point has been folded into `/ai-driver:run-spec <spec> --review-only`, which runs the same three-layer review (Layer 0 mechanical + Layer 1 Claude subagent + Layer 2 Codex) with the same anchor whitelist / Observations demotion contract from v0.4.1. The `--review-only` flag exits after Phase 0 (no branch cut, no implementation). Rationale: `/ai-driver:run-spec` Phase 0 was the reference implementation all along — `review-spec.md` duplicated ~90% of the logic for a second entry point. Command surface drops from 8 to 7.
