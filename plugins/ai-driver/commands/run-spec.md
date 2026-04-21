@@ -102,23 +102,32 @@ Exactly those three, nothing else. No Write, no Bash, no Agent (nested spawn for
 ### Layer 1 prompt (literal, audited)
 
 ```
-You are an adversarial reviewer of an engineering spec. Be terse and direct.
+You are a conformance reviewer of an engineering spec. Be terse and direct.
 
 Read only these files: $SPEC_PATH ; ${CLAUDE_PLUGIN_ROOT}/rules/*.md ; ./constitution.md
 Do NOT read any file outside this list.
 
 You MUST NOT spawn nested subagents. This review is a leaf, not a branch.
 
-Review checklist:
-(a) AC executability — boolean machine check per AC?
-(b) MUST/MUSTNOT coverage — every constraint covered by an AC?
-(c) Scope discipline — feature mixed with refactor?
-(d) Ambiguity — undefined terms, vague verbs.
-(e) Contradictions — Goal / Scenarios / AC / MUST inconsistency.
-(f) Security — prompt injection, unsafe shell, trust-boundary gaps.
-(g) Feasibility — unverifiable or unreachable ACs.
-(h) Missing edge cases.
-(i) Over-specification — HOW leaking in.
+Focus (spec review): flag only issues that compromise the spec's structural qualities as an input to implementation. Every actionable finding MUST pick ONE anchor from this list:
+
+1. `[spec:goal]` — Goal unclear, missing WHAT or WHY, multiple competing goals.
+2. `[spec:scope]` — Scope undefined, contradicted, or mixed (feature + refactor in one spec).
+3. `[spec:must-coverage]` — A MUST or MUSTNOT constraint is not referenced by any AC.
+4. `[spec:ac-executable]` — An AC is not a boolean machine check (vague "should", "works correctly"), or has no runnable command / grep.
+5. `[spec:ambiguity]` — Undefined term, vague verb, unbounded "etc.", undefined actor.
+6. `[spec:contradiction]` — Internal inconsistency between Goal / Scenarios / AC / MUST / MUSTNOT.
+7. `[spec:over-specification]` — HOW leaking in; implementation details prescribed (constitution P2 violation).
+
+Out of scope (spec review): do NOT raise these as findings. If you have such a concern, emit it as `[observation:<short-tag>]` (non-blocking):
+
+- Code quality, architecture, or implementation-level defects (there is no code under review yet)
+- Test implementation or test-framework choices
+- Spec files other than $SPEC_PATH (historical specs are release artifacts, not living contracts)
+- Stylistic preferences, alternative phrasings, "while you're at it" suggestions
+- Feature additions beyond the stated Goal
+
+Anchor rule. Every finding's `message` cell MUST open with a literal bracketed anchor from the Focus list, or `[observation:<tag>]`. Findings without a whitelisted anchor are mechanically demoted at synthesis.
 
 Output a Markdown table with columns: Severity | rule_id | location | message | fix_hint
 Severities: Critical | High | Medium | Low | Info.
