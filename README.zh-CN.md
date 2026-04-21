@@ -144,7 +144,7 @@ deploy/             — 可选的部署文档
 - **第 2 道门**（run-spec 里的 plan 审查）：同构 — **subagent + Codex 双 LLM** — 但 **仅当 Review Level ≥ B 才跑**。
 - **第 3 道门**（PR 审查）：**stage-then-read**（untrusted PR 产物通过 `gh ... > "$STAGE/..."` 拉到 `mktemp -d` 临时目录，stdout 和 stderr 都重定向，主会话**不吃原始字节**）+ subagent Pass 1 + Codex Pass 2 + 已有 reviewer 三方共识。
 
-Claude 审查跑在**沙箱化 subagent** 里（v0.3.8+）：不可信内容从不进主会话 prompt，findings 经由 "长度上限 + pipe/backtick 转义 + parse-error 固定字面量" 的解析器回流 — 即便 subagent 被攻陷也无法把攻击字节走私进来。Codex 调用走 Claude Code 的 `Bash(run_in_background=true)` — 完成通知下一轮自动送达，无需轮询，不会悄悄漏审。
+Claude 审查跑在**沙箱化 subagent** 里（v0.3.8+）：不可信内容从不进主会话 prompt。Codex 调用走 Claude Code 的 `Bash(run_in_background=true)` — 完成通知下一轮自动送达，无需轮询，不会悄悄漏审。
 
 独立的 `/ai-driver:review-spec` 让你在切分支前先对草稿 spec 做预检 — 与第 1 道门同一套 Layer 0 + subagent + Codex。
 
