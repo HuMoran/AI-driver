@@ -56,12 +56,37 @@ parse_anchor() {
 # classify_anchor: given stage + anchor, return classification.
 # $1 = stage (spec|plan|pr|pr-nospec), $2 = anchor text (no brackets)
 # stdout = one of: main | out-of-domain | requires-spec | no-anchor
-#
-# STUB in T001 (RED): returns UNKNOWN so every fixture fails.
-# Real implementation lands in T002 (GREEN).
 # ---------------------------------------------------------------------------
 classify_anchor() {
-    printf 'UNKNOWN'
+    local stage="$1" anchor="$2"
+    local wl
+    case "$stage" in
+        spec)      wl="$SPEC_WL" ;;
+        plan)      wl="$PLAN_WL" ;;
+        pr)        wl="$PR_WL_SPECFUL" ;;
+        pr-nospec) wl="$PR_WL_BASE" ;;
+        *) printf 'UNKNOWN-STAGE'; return ;;
+    esac
+
+    if [ -z "$anchor" ]; then
+        printf 'no-anchor'
+        return
+    fi
+
+    for prefix in $wl; do
+        case "$anchor" in
+            "$prefix"*) printf 'main'; return ;;
+        esac
+    done
+
+    # pr-nospec: AC-*/MUST-*/MUSTNOT-* demote to requires-spec (no spec to reference)
+    if [ "$stage" = "pr-nospec" ]; then
+        case "$anchor" in
+            AC-*|MUST-*|MUSTNOT-*) printf 'requires-spec'; return ;;
+        esac
+    fi
+
+    printf 'out-of-domain'
 }
 
 # ---------------------------------------------------------------------------
