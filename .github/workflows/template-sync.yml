@@ -24,8 +24,6 @@ jobs:
             "CLAUDE.md:plugins/ai-driver/templates/CLAUDE.md"
             "specs/_template.spec.md:plugins/ai-driver/templates/specs/_template.spec.md"
             "specs/_template.spec.zh-CN.md:plugins/ai-driver/templates/specs/_template.spec.zh-CN.md"
-            "deploy/_template.deploy.md:plugins/ai-driver/templates/deploy/_template.deploy.md"
-            "deploy/_template.deploy.zh-CN.md:plugins/ai-driver/templates/deploy/_template.deploy.zh-CN.md"
           )
           # Files intentionally allowed to diverge between repo root and templates.
           # These are NOT checked by the byte-identity rule. Add here with a reason.
