@@ -225,7 +225,7 @@ Out of scope (PR review): do NOT raise these as findings. Emit as `[observation:
 - Spec re-debate ("the spec should have required X") — the spec is an input, not under review here
 - Cleanup / refactor in files the diff did not touch
 - Architectural alternatives or stylistic preferences
-- Historical spec staleness (release-artifact specs under `specs/v0*/`)
+- Historical spec staleness (release-artifact specs under `specs/archive/`)
 - "While you're at it" suggestions
 - General best practices not tied to a specific `[AC-*]` / `[R-NNN]` / `[diff:*]`
 
@@ -295,7 +295,7 @@ Out of scope (PR review): do NOT raise as findings. Emit `[observation:<short-ta
 - Spec re-debate — spec is an input here
 - Cleanup in files the diff did not touch
 - Architectural alternatives, stylistic preferences
-- Historical spec staleness (release artifacts under `specs/v0*/`)
+- Historical spec staleness (release artifacts under `specs/archive/`)
 - General best practices not tied to a specific anchor
 
 Anchor rule. Every finding's `message` cell MUST open with a literal bracketed anchor from the Focus list, or `[observation:<tag>]`. Findings without a whitelisted anchor demote at synthesis. Prior-finding resolution (if earlier /ai-driver:review-pr comments in $STAGE/issue-comments.json): record as `[observation:prior-<status>]`.
