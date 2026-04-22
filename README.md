@@ -103,7 +103,7 @@ Sonnet + `xhigh` works for all three heavy commands if you want lower cost; Opus
 After running `/ai-driver:init`, your project contains:
 
 ```markdown
-constitution.md     — project rules (P1-P6, R-001 to R-007)
+constitution.md     — project rules (P1-P6, R-001 to R-009)
 AGENTS.md           — workflow for any AI coding tool (imported by CLAUDE.md)
 CLAUDE.md           — one-line @AGENTS.md import (+ any Claude-specific notes)
 specs/              — your spec files

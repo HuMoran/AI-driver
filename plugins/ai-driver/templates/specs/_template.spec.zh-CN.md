@@ -3,7 +3,7 @@
 ## 元信息
 
 - 日期：YYYY-MM-DD
-- 对抗审查级别：B
+- Review Level: B
   A = 仅 PR 审查
   B = 计划阶段 + PR 审查（默认）
   C = 每步都审查

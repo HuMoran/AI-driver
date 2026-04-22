@@ -4,7 +4,7 @@ Language-agnostic AI-driven development framework. Humans write specs, AI does t
 
 ## IMPORTANT: Read constitution.md before any operation
 
-The constitution defines all principles (P1-P6) and operational rules (R-001 to R-007) that govern AI behavior in this project. Obey every rule. Halt and report on any violation.
+The constitution defines all principles (P1-P6) and operational rules (R-001 to R-009) that govern AI behavior in this project. Obey every rule. Halt and report on any violation.
 
 ## Workflow
 1. Human writes `specs/<name>.spec.md` (template at `specs/_template.spec.md`)
