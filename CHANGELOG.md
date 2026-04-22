@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.4.4] - 2026-04-22
+
+Documentation and repository housekeeping release. No behaviour change; both regression harnesses (`tests/review-synthesis/drift-demotion.sh`, `tests/governance-snapshots/check.sh`) pass unchanged.
+
+### Changed
+
+- **Stale `R-001 to R-007` refs updated to `R-001 to R-009`** in `README.md`, `README.zh-CN.md`, and `plugins/ai-driver/templates/AGENTS.md`. R-008 and R-009 were added to `constitution.md` in prior releases but three docs still referenced the old range; `review-pr.md` already used `R-001..R-009`, so this aligns the rest.
+- **`Review Level` de-translated in the zh-CN spec template.** `specs/_template.spec.zh-CN.md` (and its byte-identical template mirror) had `对抗审查级别：B`; restored to `Review Level: B` because it is a framework-defined config field name (proper noun), per the "中文 + English technical terms" convention.
+- **`AGENTS.md` Key workflows / Governance sections compressed to cross-command contracts only** (~35% shorter in the affected sections). Previously duplicated subagent allowlists, Codex flags, stage-then-read mechanics, and anchor whitelists that are canonical in each command's file (`run-spec.md` Phase 0/1, `review-pr.md` Step 2 / Gating, `merge-pr.md` Step 0b.3). AGENTS.md now carries gate→command maps, the amendment-commit template, and pointers — each command file remains the sole canonical source for its own algorithm.
+- **Version markers stripped from living docs** across `review-pr.md`, `run-spec.md`, `merge-pr.md`, `fix-issues.md`, `doctor.md`. Tags like `(v0.3.8+)`, `"new in v0.3.4"`, and v0.3.9 incident name-drops are CHANGELOG territory, not living-doc territory. Kept intentionally: `Legacy v0.1 filename` (filesystem pattern semantics), `v0.3.0` / `v0.0.0` in `merge-pr` (regex counterexample + semver fallback literals). `doctor.md`'s dead `docs/research/...` link replaced with an inline pointer to Claude Code's plugin-marketplaces docs.
+- **`review-pr.md` out-of-scope prose updated from `specs/v0*/` to `specs/archive/`** to match the new archive layout (see Removed).
+
+### Removed
+
+- **Root-level `deploy/` template pair.** This repo is the plugin source, not a deployable project — it never needed its own copy of `_template.deploy.md` / `_template.deploy.zh-CN.md`. Outbound templates for user projects remain at `plugins/ai-driver/templates/deploy/`. `template-sync.yml` PAIRS updated in both copies.
+- **12 historical v0.x specs archived to `specs/archive/`** (8 `v-`prefixed through v0.3.2–v0.4.1 plus v0.3.10 plan; 4 feature-scoped: comment-aware-review, doctor-command, merge-pr-command, merge-pr-version-bump). `specs/` top level now holds only the template pair + `archive/`, so new work is visually obvious on `ls`. `doctor.md` Check 5 already exempted `specs/archive/*` from legacy-filename warnings.
+- **17 raw `codex-*.txt` review transcripts** deleted from `logs/v036-spec-review/`, `logs/v037-injection-tests/`, `logs/v038-subagent-reviews/`, `logs/v0310-governance-workflow/` (~7800 lines). Synthesized outputs kept: `spec-review.md`, `plan.md`, `tasks.md`, `implementation.log`, `acceptance-report.md`. Raw bytes are recoverable from git history.
+- **Three pre-v0.1 archival design documents** in `docs/research/`, `docs/plans/`, `docs/specs/` (2336 lines). Zero-referenced in any live `.md`; CHANGELOG.md + git history preserve the design rationale.
+
 ## [0.4.3] - 2026-04-21
 
 ### Removed
