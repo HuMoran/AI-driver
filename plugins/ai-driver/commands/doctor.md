@@ -99,7 +99,7 @@ Determine INSTALLED version from `${CLAUDE_PLUGIN_ROOT}` path — it's the `<ver
 
 - If `./.claude-plugin/` directory does not exist → mark `[—]` (N/A). Non-plugin-publishing project, nothing further to check.
 - Otherwise (`.claude-plugin/` exists — we assume publishing intent):
-  - If `./.claude-plugin/marketplace.json` missing → ERROR: `"[✗] .claude-plugin/ exists but marketplace.json missing. Fix: follow docs/research/2026-04-17-plugin-interface.md §2 to create it, or remove .claude-plugin/ if not publishing."`.
+  - If `./.claude-plugin/marketplace.json` missing → ERROR: `"[✗] .claude-plugin/ exists but marketplace.json missing. Fix: create .claude-plugin/marketplace.json with at minimum {\"name\": \"...\", \"owner\": {...}, \"plugins\": [...]} (see Claude Code plugin-marketplaces docs), or remove .claude-plugin/ if not publishing."`.
   - If present but `jq -e . ./.claude-plugin/marketplace.json >/dev/null` fails → ERROR: `"[✗] .claude-plugin/marketplace.json is invalid JSON. Fix: open the file and fix the syntax (or restore from git: git checkout .claude-plugin/marketplace.json)"`.
   - Same rules for `./.claude-plugin/plugin.json` IF it exists. Absence of `plugin.json` is OK (our relative-path-plugin convention).
 

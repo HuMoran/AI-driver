@@ -91,7 +91,7 @@ sed 's/`[^`]*`//g' "$SPEC_PATH" | grep -Fn '[NEEDS CLARIFICATION]'
 
 ### Layer 1: Claude adversarial review (subagent)
 
-v0.3.8+: the Claude pass runs in a **dedicated subagent**, not the main session. Rationale: hostile spec content cannot contaminate the main session's context if it never enters it, and a fresh subagent context removes implementer bias (main session is about to implement; subagent's only job is to find defects). Main session passes `$SPEC_PATH` as a **path argument** — never by inline content capture.
+The Claude pass runs in a **dedicated subagent**, not the main session. Rationale: hostile spec content cannot contaminate the main session's context if it never enters it, and a fresh subagent context removes implementer bias (main session is about to implement; subagent's only job is to find defects). Main session passes `$SPEC_PATH` as a **path argument** — never by inline content capture.
 
 **Subagent spawn** via the Agent tool with `subagent_type=general-purpose` and the exact tool allowlist:
 
@@ -216,7 +216,7 @@ Write `logs/<spec-slug>/spec-review.md` containing three sections (Layer 0 / Lay
 
 Gating runs in two stages: **scope fence** (anchor-based demotion to Observations) followed by **consensus + severity**. Verdict computation excludes Observations.
 
-**Scope fence (v0.4.1+).** Every actionable finding MUST cite an anchor in its `message` cell, parsed as the leading bracketed token matching `^\[[^\]]+\]` after stripping leading whitespace. `[observation:*]` is always permitted.
+**Scope fence.** Every actionable finding MUST cite an anchor in its `message` cell, parsed as the leading bracketed token matching `^\[[^\]]+\]` after stripping leading whitespace. `[observation:*]` is always permitted.
 
 **Stage whitelist (spec review):** `[spec:goal]`, `[spec:scope]`, `[spec:must-coverage]`, `[spec:ac-executable]`, `[spec:ambiguity]`, `[spec:contradiction]`, `[spec:over-specification]`, `[observation:*]`.
 
@@ -284,7 +284,7 @@ Generate `logs/<spec-slug>/tasks.md`:
 
 ### Plan Review (if review level >= B)
 
-v0.3.8+: Phase 1 plan review is a **dual-LLM gate**, symmetric with Phase 0 (spec review) and Gate 3 (PR review). When the spec's `Review Level` is `B` or `C`, run BOTH a Claude subagent pass AND a Codex external pass against `logs/<spec-slug>/plan.md`. If `Review Level` is `A`, skip both passes — the gate preserves the existing opt-out for light-weight work.
+Phase 1 plan review is a **dual-LLM gate**, symmetric with Phase 0 (spec review) and Gate 3 (PR review). When the spec's `Review Level` is `B` or `C`, run BOTH a Claude subagent pass AND a Codex external pass against `logs/<spec-slug>/plan.md`. If `Review Level` is `A`, skip both passes — the gate preserves the opt-out for light-weight work.
 
 #### Plan review prompt (literal, audited)
 

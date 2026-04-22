@@ -21,7 +21,7 @@ Rewrites `CHANGELOG.md` (Unreleased → next version block), commits on the PR b
 - `--no-release` — merge only. Do NOT read `[Unreleased]`, do NOT rewrite `CHANGELOG.md`, do NOT tag. Mutually exclusive with `--version` and `--bump`.
 - `--squash` — use `gh pr merge --squash` instead of the default `--merge`.
 - `--no-check` — skip the mergeable + CI checks.
-- `--defer "<rationale>"` — only meaningful on PRs that propose an `R-NNN` constitution amendment in the PR body AND whose branch does **not** yet contain the corresponding `docs(constitution): add R-NNN …` commit (governance "Case B" shape, i.e., the v0.3.9 shape). Allows merging the feature PR while explicitly deferring the approved amendment to a follow-up constitution-only PR. `<rationale>` must be ≤ 200 chars, single-line (no `\n` / `\r`); `` ` ``, `|`, `$`, `<`, `>`, `\`, `"`, `'` are escaped before interpolation into the audit comment. Longer or multi-line → Step 0b abort with no writes. Mutually meaningless without a governance proposal in the body (Step 0b skips audit write in that case). See §Step 0b.3 (validation) and §Step 2.5 (audit sink).
+- `--defer "<rationale>"` — only meaningful on PRs that propose an `R-NNN` constitution amendment in the PR body AND whose branch does **not** yet contain the corresponding `docs(constitution): add R-NNN …` commit (governance "approved-without-commit" case). Allows merging the feature PR while explicitly deferring the approved amendment to a follow-up constitution-only PR. `<rationale>` must be ≤ 200 chars, single-line (no `\n` / `\r`); `` ` ``, `|`, `$`, `<`, `>`, `\`, `"`, `'` are escaped before interpolation into the audit comment. Longer or multi-line → Step 0b abort with no writes. Mutually meaningless without a governance proposal in the body (Step 0b skips audit write in that case). See §Step 0b.3 (validation) and §Step 2.5 (audit sink).
 - `--dry-run` — print the planned actions and exit **before any write, git mutation, git-remote operation, or network call; local read-only git commands may run during preflight (e.g., `git status`, `git describe --tags`)**.
 
 ## Step 0a: Local preflight (no network, no git-remote calls)
@@ -108,7 +108,7 @@ These require network and a working `gh` auth:
 2. **PR mergeability** (skip if `--no-check`):
    - `gh pr view <n> --json mergeable --jq .mergeable` must equal `"MERGEABLE"`.
    - `gh pr checks <n>` — no REQUIRED check in FAILURE state.
-3. **Governance preflight (validation-only — no writes).** Closes the workflow gap that caused v0.3.9 (where an approved `R-009` amendment shipped without merging the `docs(constitution):` commit).
+3. **Governance preflight (validation-only — no writes).** Closes the workflow gap where an approved amendment can ship without the matching `docs(constitution):` commit on the branch.
 
    **Goal**: any PR that proposes an `R-NNN` constitution amendment in its body, OR changes `constitution.md` / its template mirror, must satisfy three conditions or fail-closed here. This step MUST write nothing (no comment, no file, no commit); actual audit writes live in Step 2.5.
 
@@ -330,7 +330,7 @@ git add CHANGELOG.md
 
 ## Step 2.5: Governance deferral audit (only when `--defer` fires)
 
-Runs iff `GOV_DEFER_R` was exported by Step 0b.3 — i.e., the PR has a rule-scoped approval but no amendment commit on the branch, and the maintainer passed `--defer "<rationale>"`. Writes **one** idempotent PR comment as the single audit sink (simpler than the three-sink shape from v0.3.9 discussions — one sink is enough to reconstruct the deferral chain). No CHANGELOG section is added beyond what Step 2a already wrote, and no merge-commit trailer is set (the comment is the canonical record).
+Runs iff `GOV_DEFER_R` was exported by Step 0b.3 — i.e., the PR has a rule-scoped approval but no amendment commit on the branch, and the maintainer passed `--defer "<rationale>"`. Writes **one** idempotent PR comment as the single audit sink; one sink is enough to reconstruct the deferral chain. No CHANGELOG section is added beyond what Step 2a already wrote, and no merge-commit trailer is set (the comment is the canonical record).
 
 ```bash
 if [ -n "${GOV_DEFER_R:-}" ]; then

@@ -55,7 +55,7 @@ Scan all comments for spec-formatted content. Look for markers:
 
 If found: validate it has at minimum a Goal and at least one AC.
 
-**Bot-authored spec guardrail (new in v0.3.4):**
+**Bot-authored spec guardrail:**
 
 If the comment containing the spec has `user.type == "Bot"` OR `user.login` ends with `[bot]`:
 
