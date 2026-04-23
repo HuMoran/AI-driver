@@ -1,0 +1,36 @@
+# Implementation Log — goal-traceable-review
+
+## What was implemented
+
+- Added **Goal-traceability requirement** clause to both Layer 1 and Layer 2 prompt literals in `plugins/ai-driver/commands/run-spec.md`. Clauses are mirror-consistent semantically; the only differences are in surrounding context (subagent scope description vs Codex stdin-fence orientation).
+- Added **Refinement-loop detection** section to Gating, placed between the scope-fence and the consensus steps. Includes term definitions for `normalized_location`, `previous round`, and `resolved`/`acknowledged` markers.
+- Added CHANGELOG `[Unreleased]` `### Changed` entry with motivation (references the zh-CN template fix incident, 6 review rounds).
+
+## Leveraged existing code
+
+- Scope-fence demotion machinery in Gating — extended with new `[observation:refinement-loop]` tag; other demotion tags (`anchor-out-of-domain`, `no-anchor`) preserved byte-for-byte.
+- Consensus dual-raise severity-notch rule — untouched, runs after refinement-loop demotion so it only applies to surviving actionable findings.
+- `tests/review-synthesis/drift-demotion.sh` — existing anchor-demotion regression; AC-005 verifies it still passes after the Gating changes.
+
+## Issues encountered
+
+- Slash-command argument parsing: `/ai-driver:run-spec specs/foo.spec.md --accept-high` injects `--accept-high` into the spec path. The command template uses `$ARGUMENTS` as a single string. Worked around by manually parsing arguments. Unrelated to this spec's Goal; a separate PR can fix the template.
+- Fish-shell interaction with `$(...)` and `|| echo 0` fallbacks produced false Layer 0 failures during self-check. Direct `grep` verified actual state. Unrelated to this spec; if future run-spec implementations shell out to check these rules, prefer bash over fish.
+
+## Phase 0 artifact record (applying new rule retroactively)
+
+For reference, the spec review transcript shows how the new rule would have applied to this PR's own review if it had been in place:
+- Of 10 findings across L1+L2, 2 were Goal-critical (CT-001 contradiction, AMB-001 ambiguity) → fixed in spec v2
+- 3 were not Goal-critical (AC-004 CHANGELOG wording, AC-003 drive-by match, L1 Info implementation detail) → would emit as `[observation:*]`
+- 5 were legitimate concerns but structurally outside Level-A 5-AC scope → `--accept-high` acknowledgment
+
+Under the new rule, round 1 would have surfaced 2 actionable findings + 3 observations + 5 acknowledgments. Six rounds would collapse to one.
+
+## Final status
+
+**DONE**
+
+- All 5 ACs PASS
+- PR #18 opened: https://github.com/HuMoran/AI-driver/pull/18
+- Branch: `feat/goal-traceable-review` tracking `origin/feat/goal-traceable-review`
+- Commit: `ff94b25`

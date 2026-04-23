@@ -134,6 +134,8 @@ Out of scope (spec review): do NOT raise these as findings. If you have such a c
 
 Anchor rule. Every finding's `message` cell MUST open with a literal bracketed anchor from the Focus list, or `[observation:<tag>]`. Findings without a whitelisted anchor are mechanically demoted at synthesis.
 
+Goal-traceability requirement. Every actionable finding MUST answer: "If this is not fixed, which Scenario / Acceptance Criterion fails to deliver the stated Goal?" If the answer is "Goal is still delivered, just less portable / less precise / less robust in some environments", emit as `[observation:<tag>]`, NOT as actionable. `[spec:ac-executable]` and `[spec:ambiguity]` anchors in particular are reserved for defects that break Goal delivery; tightening an AC or term purely for robustness, portability, or stylistic precision is the implementer's concern, not the spec's. Prefer fewer actionable findings that each name the Goal-failure mode over many actionable findings that accumulate to Goal completeness. When in doubt, downgrade to observation.
+
 Output a Markdown table with columns: Severity | rule_id | location | message | fix_hint
 Severities: Critical | High | Medium | Low | Info.
 End with one line: CONSENSUS: N_CRITICAL Critical, N_HIGH High, N_MEDIUM Medium, N_LOW Low.
@@ -199,6 +201,8 @@ Out of scope (spec review): do NOT raise these as findings. If you have such a c
 
 Anchor rule. Every finding's `message` cell MUST open with a literal bracketed anchor from the Focus list, or `[observation:<tag>]`. Findings without a whitelisted anchor are mechanically demoted at synthesis.
 
+Goal-traceability requirement. Every actionable finding MUST answer: "If this is not fixed, which Scenario / Acceptance Criterion fails to deliver the stated Goal?" If the answer is "Goal is still delivered, just less portable / less precise / less robust in some environments", emit as `[observation:<tag>]`, NOT as actionable. `[spec:ac-executable]` and `[spec:ambiguity]` anchors in particular are reserved for defects that break Goal delivery; tightening an AC or term purely for robustness, portability, or stylistic precision is the implementer's concern, not the spec's. Prefer fewer actionable findings that each name the Goal-failure mode over many actionable findings that accumulate to Goal completeness. When in doubt, downgrade to observation.
+
 For each finding, output a row in the same table schema as Layer 1:
 | Severity | rule_id | location | message | fix_hint |
 Severities: Critical | High | Medium | Low | Info.
@@ -226,6 +230,15 @@ Findings whose anchor is not in the whitelist are demoted to the `Observations` 
 - `no-anchor` — `message` does not start with a bracketed token
 
 Reference implementation: `tests/review-synthesis/drift-demotion.sh`.
+
+**Refinement-loop detection.** After the scope fence, before consensus, check every actionable finding against the previous round's review log in the same `logs/<spec-slug>/` directory. If a finding's `(rule_id, normalized_location)` appeared in the previous round AND was explicitly marked `resolved` or `acknowledged` in that round's `## Resolutions` sub-section, this round's occurrence is a refinement loop: retag as `[observation:refinement-loop]`, demote to Observations at severity `Info`, do NOT contribute to the Verdict.
+
+Definitions (stable across layers):
+- **`normalized_location`** = the finding's file path + the nearest preceding `^##` or `^###` Markdown header in that file (line numbers stripped, internal whitespace collapsed to single spaces). Two findings pointing into the same section are the same location.
+- **Previous round** = the lexicographically second-latest `spec-review*.md` under `logs/<spec-slug>/`. The initial run has no previous round; this rule is a no-op then.
+- **`resolved` / `acknowledged` markers** = lines in the previous review log's `## Resolutions` sub-section, each of the form `- <rule_id> @ <normalized_location>: resolved|acknowledged — <rationale>`, authored by the spec owner between runs. Unmarked repeats are NOT loops — they stay actionable.
+
+Rationale: this rule prevents the adversarial review from self-recursing on the same location with ever-finer objections once the spec owner has explicitly judged that concern resolved or accepted. It does not suppress genuinely new finding locations, and it does not silence unresolved repeats.
 
 **Consensus + severity.** Build a consensus table keyed by **`(rule_id, normalized location)`** — lowercase rule_id, whitespace-trimmed location, with ±3-line fuzz on `file:line` positions to absorb Codex line-offset drift. Two findings with the same rule_id but genuinely different locations are separate rows, **not** merged. A finding raised by both Layer 1 and Layer 2 on the same `(rule_id, normalized location)` key is marked `dual-raised` and upgraded one severity notch (same pattern as `review-pr.md`).
 
