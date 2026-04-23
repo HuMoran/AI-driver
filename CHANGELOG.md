@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **zh-CN spec template Layer 0 anchor drift.** `specs/_template.spec.zh-CN.md` (and the byte-identical `plugins/ai-driver/templates/specs/_template.spec.zh-CN.md`) had Chinese-translated H2/H3 anchors (`## 元信息`, `## 目标`, `### 场景 1:`, `### 必须`, etc.) and a Chinese `- 日期：YYYY-MM-DD` line. `/ai-driver:run-spec` Phase 0 Layer 0 hardcodes English anchors in `plugins/ai-driver/commands/run-spec.md:75-81` (S-META, S-GOAL, S-PLACEHOLDER), so any spec written from the zh-CN template hit `exit 2` before any LLM review. Restored the structural skeleton to English (all H2, all H3, `- Date:`, `- Review Level:`) while keeping the body copy, placeholders, and Review Level A/B/C notes in Chinese — same rule 0.4.4 applied to `Review Level` alone, extended to every framework-defined anchor. Migrate existing zh-CN specs with: `sed -i.bak -e 's/^## 元信息$/## Meta/' -e 's/^## 目标$/## Goal/' -e 's/^## 用户场景$/## User Scenarios/' -e 's/^## 验收标准$/## Acceptance Criteria/' -e 's/^## 技术约束$/## Constraints/' -e 's/^## 参考资料$/## References/' -e 's/^- 日期：/- Date: /' specs/<your>.spec.md`.
+
 ## [0.4.4] - 2026-04-22
 
 Documentation and repository housekeeping release. No behaviour change; both regression harnesses (`tests/review-synthesis/drift-demotion.sh`, `tests/governance-snapshots/check.sh`) pass unchanged.
