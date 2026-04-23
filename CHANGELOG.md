@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.4.5] - 2026-04-23
+
+Process-correction release. Fixes the zh-CN spec template so `/ai-driver:run-spec` Phase 0 Layer 0 accepts it again, and tightens Phase 0 Layer 1 / Layer 2 review contracts so findings that don't name a Goal-failure mode emit as observations instead of blocking the Verdict. Motivated by a live case where the template fix itself hit 6 review rounds because adversarial reviewers self-recursed on the same locations with ever-finer portability / precision objections — none of which would have caused the stated Goal to fail.
+
 ### Changed
 
 - **`/ai-driver:run-spec` Phase 0 review gains Goal-traceability + refinement-loop demotion.** Both `Layer 1 prompt (literal, audited)` and `Layer 2 prompt (literal)` in `plugins/ai-driver/commands/run-spec.md` now require every actionable finding to answer "if not fixed, which Scenario/AC fails to deliver the stated Goal?". Findings that describe portability / precision / robustness tightening without naming a Goal-failure mode must emit as `[observation:<tag>]`, not actionable. `[spec:ac-executable]` and `[spec:ambiguity]` in particular are reserved for Goal-breaking defects. Gating adds a refinement-loop step before consensus: a finding whose `(rule_id, normalized_location)` was marked `resolved` or `acknowledged` in the previous round's `logs/<spec-slug>/spec-review*.md` `## Resolutions` sub-section is auto-demoted to `[observation:refinement-loop]`. Motivation: the previous zh-CN template fix hit 6 review rounds where reviewers self-recursed on `[spec:ac-executable]` / `[spec:ambiguity]` at the same locations (BSD vs GNU sed, shallow clone base-ref, trailing whitespace), none of which would have caused the Goal to fail. New rule makes the review converge on Goal coverage instead of AC wording perfection.
