@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.4.6] - 2026-04-29
+
 ### Changed
 
 - **Stop pinning Codex to `gpt-5.4` at every layer.** Issue #19 reported that `codex exec` invocations were hardcoded to `gpt-5.4` and would not follow upstream model upgrades. PR #20 removes the pin from two layers, so `codex exec` falls through to its own model resolution (which today picks codex CLI's default — typically the latest stable):
