@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.4.6] - 2026-04-29
+
+### Changed
+
+- **Stop pinning Codex to `gpt-5.4` at every layer.** Issue #19 reported that `codex exec` invocations were hardcoded to `gpt-5.4` and would not follow upstream model upgrades. PR #20 removes the pin from two layers, so `codex exec` falls through to its own model resolution (which today picks codex CLI's default — typically the latest stable):
+  1. `plugins/ai-driver/commands/run-spec.md` (Phase 0 Layer 2 spec review, Plan review Pass 2) and `plugins/ai-driver/commands/review-pr.md` (Pass 2 adversarial diff review) — drops `--model gpt-5.4` from all three `codex exec` invocations. Surrounding `--config model_reasoning_effort="high"` and `-s read-only` are preserved.
+  2. `/.codex/config.toml` and `/plugins/ai-driver/templates/.codex/config.toml` — **deleted in full**. They contained only `model = "gpt-5.4"` (now harmful) and `model_reasoning_effort = "high"` (now redundant — every `codex exec` call passes `-c model_reasoning_effort="high"` directly). The `template-sync.yml` PAIRS entry for `.codex/config.toml` is removed accordingly. Without this layer, downstream users who initialize a project from this template and lack a `model = "..."` line in `~/.codex/config.toml` would have stayed pinned to `gpt-5.4` even after the commands/ change. Existing reviewer (`copilot-pull-request-reviewer[bot]`) and Pass 1 (Claude) of `/ai-driver:review-pr` flagged this as a Goal-traceability gap.
+
+  Users who want to pin a specific model can still do so via `~/.codex/config.toml` or by injecting `-c model="..."` at the user level — both layers above are framework-side defaults, not user-side controls. Fixes #19.
+
 ## [0.4.5] - 2026-04-23
 
 Process-correction release. Fixes the zh-CN spec template so `/ai-driver:run-spec` Phase 0 Layer 0 accepts it again, and tightens Phase 0 Layer 1 / Layer 2 review contracts so findings that don't name a Goal-failure mode emit as observations instead of blocking the Verdict. Motivated by a live case where the template fix itself hit 6 review rounds because adversarial reviewers self-recursed on the same locations with ever-finer portability / precision objections — none of which would have caused the stated Goal to fail.

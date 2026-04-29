@@ -19,7 +19,6 @@ jobs:
             ".github/workflows/auto-release.yml:plugins/ai-driver/templates/.github/workflows/auto-release.yml"
             ".github/workflows/ci.yml:plugins/ai-driver/templates/.github/workflows/ci.yml"
             ".github/workflows/template-sync.yml:plugins/ai-driver/templates/.github/workflows/template-sync.yml"
-            ".codex/config.toml:plugins/ai-driver/templates/.codex/config.toml"
             "constitution.md:plugins/ai-driver/templates/constitution.md"
             "CLAUDE.md:plugins/ai-driver/templates/CLAUDE.md"
             "specs/_template.spec.md:plugins/ai-driver/templates/specs/_template.spec.md"
