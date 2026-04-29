@@ -252,7 +252,7 @@ Dispatch Codex via Claude Code's `Bash(run_in_background=true)` pattern — NOT 
 ```bash
 # The main agent invokes this via the Bash tool with run_in_background=true.
 # Shell form shown for audit.
-codex exec --model gpt-5.4 --config model_reasoning_effort="high" -s read-only "$PASS2_PROMPT" < "$STAGE/diff.txt"
+codex exec --config model_reasoning_effort="high" -s read-only "$PASS2_PROMPT" < "$STAGE/diff.txt"
 ```
 
 `$PASS2_PROMPT` is the literal prompt block below. Codex reads the diff on stdin; for the reviewer / comment artifacts, the prompt names the `$STAGE/*.json` paths and Codex reads them via its own sandbox (it also has filesystem read under `-s read-only`).

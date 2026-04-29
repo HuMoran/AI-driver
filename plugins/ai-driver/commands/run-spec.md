@@ -156,7 +156,7 @@ Run Codex as a tracked background job so the notification arrives automatically 
 # for audit clarity):
 # Wrap stdin in the BEGIN/END SPEC fences the Layer 2 literal prompt expects:
 { printf -- '---BEGIN SPEC---\n'; cat "$SPEC_PATH"; printf -- '\n---END SPEC---\n'; } | \
-  codex exec --model gpt-5.4 --config model_reasoning_effort="high" -s read-only "$CODEX_SPEC_REVIEW_PROMPT"
+  codex exec --config model_reasoning_effort="high" -s read-only "$CODEX_SPEC_REVIEW_PROMPT"
 ```
 
 Notes:
@@ -351,7 +351,7 @@ Exactly those three, nothing else. Main session passes `plan.md` as a **path arg
 - Invocation (shell form shown for audit; main agent uses the Bash tool with `run_in_background=true`):
 
   ```bash
-  codex exec --model gpt-5.4 --config model_reasoning_effort="high" -s read-only \
+  codex exec --config model_reasoning_effort="high" -s read-only \
     "$PLAN_REVIEW_PROMPT" < logs/<spec-slug>/plan.md
   ```
 - `$PLAN_REVIEW_PROMPT` is the literal prompt block above. Codex receives the same Focus (plan review): + Out of scope (plan review): + plan-anchor whitelist as the subagent pass — the dual-LLM arrangement means the scope fence applies symmetrically, and cross-pass consensus operates only on the surviving main findings.

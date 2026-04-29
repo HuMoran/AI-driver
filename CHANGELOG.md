@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- **Drop hardcoded `--model gpt-5.4` from all `codex exec` invocations.** `plugins/ai-driver/commands/run-spec.md` (Phase 0 Layer 2 spec review, Plan review Pass 2) and `plugins/ai-driver/commands/review-pr.md` (Pass 2 adversarial diff review) all hardcoded `--model gpt-5.4`, blocking automatic model upgrades when the user's `codex` CLI evolved. The flag is removed; codex CLI now picks its own default model (governed by `~/.codex/config.toml` or codex's built-in default), so the framework rides codex upgrades without per-release maintenance. Surrounding `--config model_reasoning_effort="high"` and `-s read-only` are preserved (P5 minimal change). Users who want to pin a model can still do so via `~/.codex/config.toml` or by injecting `-c model="..."` at the user level. Fixes #19.
+
 ## [0.4.5] - 2026-04-23
 
 Process-correction release. Fixes the zh-CN spec template so `/ai-driver:run-spec` Phase 0 Layer 0 accepts it again, and tightens Phase 0 Layer 1 / Layer 2 review contracts so findings that don't name a Goal-failure mode emit as observations instead of blocking the Verdict. Motivated by a live case where the template fix itself hit 6 review rounds because adversarial reviewers self-recursed on the same locations with ever-finer portability / precision objections — none of which would have caused the stated Goal to fail.
