@@ -252,6 +252,8 @@ Dispatch Codex via Claude Code's `Bash(run_in_background=true)` pattern — NOT 
 ```bash
 # The main agent invokes this via the Bash tool with run_in_background=true.
 # Shell form shown for audit.
+RESOLVED_MODEL=$(awk -F'[ "=]+' '/^model[[:space:]]*=/{print $2; exit}' ~/.codex/config.toml 2>/dev/null || echo '<codex-cli-default>')
+echo "[ai-driver] Codex pass: model=$RESOLVED_MODEL reasoning_effort=high cwd=$(pwd)" >&2
 codex exec --config model_reasoning_effort="high" -s read-only "$PASS2_PROMPT" < "$STAGE/diff.txt"
 ```
 
