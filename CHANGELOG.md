@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **Print codex configuration before each pass.** Each `codex exec` call site in `plugins/ai-driver/commands/run-spec.md` (Phase 0 Layer 2 spec review, Plan review Pass 2) and `plugins/ai-driver/commands/review-pr.md` (Pass 2 adversarial diff review) now precedes the codex invocation with two bash lines that resolve `~/.codex/config.toml`'s `model =` (or `<codex-cli-default>` if absent) and echo a one-line summary to stderr: `[ai-driver] Codex pass: model=<resolved> reasoning_effort=high cwd=<...>`. Without this, downstream of issue #19 (which removed the `--model gpt-5.4` pin), users had no direct visibility into which model their codex CLI defaulted to — a quiet drift to a low-cost model would silently degrade dual-blind review quality. Non-blocking (no interactive prompt; preserves P6 automated pipeline). The optional `AI_DRIVER_REQUIRE_CONFIRM=1` blocking-confirm flag mentioned in issue #21 is intentionally out of scope: `Bash(run_in_background=true)` cannot interactively `read`, and adding confirmation requires redesigning the codex dispatch flow. Fixes #21.
+
 ## [0.4.6] - 2026-04-29
 
 ### Changed

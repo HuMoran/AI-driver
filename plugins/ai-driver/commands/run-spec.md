@@ -155,6 +155,8 @@ Run Codex as a tracked background job so the notification arrives automatically 
 # tool, not a literal shell snippet; shown here as the equivalent shell form
 # for audit clarity):
 # Wrap stdin in the BEGIN/END SPEC fences the Layer 2 literal prompt expects:
+RESOLVED_MODEL=$(awk -F'[ "=]+' '/^model[[:space:]]*=/{print $2; exit}' ~/.codex/config.toml 2>/dev/null || echo '<codex-cli-default>')
+echo "[ai-driver] Codex pass: model=$RESOLVED_MODEL reasoning_effort=high cwd=$(pwd)" >&2
 { printf -- '---BEGIN SPEC---\n'; cat "$SPEC_PATH"; printf -- '\n---END SPEC---\n'; } | \
   codex exec --config model_reasoning_effort="high" -s read-only "$CODEX_SPEC_REVIEW_PROMPT"
 ```
@@ -351,6 +353,8 @@ Exactly those three, nothing else. Main session passes `plan.md` as a **path arg
 - Invocation (shell form shown for audit; main agent uses the Bash tool with `run_in_background=true`):
 
   ```bash
+  RESOLVED_MODEL=$(awk -F'[ "=]+' '/^model[[:space:]]*=/{print $2; exit}' ~/.codex/config.toml 2>/dev/null || echo '<codex-cli-default>')
+  echo "[ai-driver] Codex pass: model=$RESOLVED_MODEL reasoning_effort=high cwd=$(pwd)" >&2
   codex exec --config model_reasoning_effort="high" -s read-only \
     "$PLAN_REVIEW_PROMPT" < logs/<spec-slug>/plan.md
   ```
